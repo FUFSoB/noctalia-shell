@@ -783,7 +783,7 @@ Item {
             readonly property bool isUrgent: modelData?.isUrgent ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
-            readonly property int urgentDotSize: Math.max(4, Style.toOdd(root.iconSize * 0.28))
+            readonly property int urgentDotSize: Math.min(root.iconSize - 1, Math.max(6, Style.toOdd(root.iconSize * 0.4)))
 
             width: root.iconSize
             height: root.iconSize
