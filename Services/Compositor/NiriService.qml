@@ -16,6 +16,7 @@ Item {
   property bool blockOutEnabled: false
   property bool overviewActive: false
   property var activeWholeOutputCaptures: ({})
+  property var activeWorkspaceCaptures: ({})
 
   property var keyboardLayouts: []
 
@@ -211,19 +212,29 @@ Item {
 
   function safeUpdateCaptures() {
     const niriCasts = Niri.casts.values;
-    const captureMap = {};
+    const outputCaptureMap = {};
+    const workspaceCaptureMap = {};
 
     for (var i = 0; i < niriCasts.length; i++) {
       const cast = niriCasts[i];
-      if (!cast.isActive || cast.targetType !== "output" || !cast.targetOutput) {
+      if (!cast.isActive) {
         continue;
       }
 
-      const outputName = cast.targetOutput.toLowerCase();
-      captureMap[outputName] = (captureMap[outputName] || 0) + 1;
+      if (cast.targetType === "output" && cast.targetOutput) {
+        const outputName = cast.targetOutput.toLowerCase();
+        outputCaptureMap[outputName] = (outputCaptureMap[outputName] || 0) + 1;
+        continue;
+      }
+
+      if (cast.targetType === "workspace" && cast.targetWorkspaceId >= 0) {
+        const workspaceId = cast.targetWorkspaceId.toString();
+        workspaceCaptureMap[workspaceId] = (workspaceCaptureMap[workspaceId] || 0) + 1;
+      }
     }
 
-    activeWholeOutputCaptures = captureMap;
+    activeWholeOutputCaptures = outputCaptureMap;
+    activeWorkspaceCaptures = workspaceCaptureMap;
   }
 
   function safeUpdateFocusedWindow() {

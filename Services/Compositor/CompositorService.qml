@@ -32,6 +32,7 @@ Singleton {
   property bool overviewActive: false
   property bool blockOutEnabled: false
   property var activeWholeOutputCaptures: ({})
+  property var activeWorkspaceCaptures: ({})
 
   // Global workspaces flag (workspaces shared across all outputs)
   // True for LabWC (stacking compositor), false for tiling WMs with per-output workspaces
@@ -253,6 +254,11 @@ Singleton {
                                                     activeWholeOutputCaptures = backend.activeWholeOutputCaptures;
                                                   });
     }
+    if (backend.activeWorkspaceCapturesChanged) {
+      backend.activeWorkspaceCapturesChanged.connect(() => {
+                                                  activeWorkspaceCaptures = backend.activeWorkspaceCaptures;
+                                                });
+    }
 
     // Initial sync
     syncWorkspaces();
@@ -266,6 +272,9 @@ Singleton {
     }
     if (backend.activeWholeOutputCaptures !== undefined) {
       activeWholeOutputCaptures = backend.activeWholeOutputCaptures;
+    }
+    if (backend.activeWorkspaceCaptures !== undefined) {
+      activeWorkspaceCaptures = backend.activeWorkspaceCaptures;
     }
     if (backend.globalWorkspaces !== undefined) {
       globalWorkspaces = backend.globalWorkspaces;
@@ -451,6 +460,13 @@ Singleton {
       return false;
     const key = outputName.toLowerCase();
     return (activeWholeOutputCaptures[key] || 0) > 0;
+  }
+
+  function hasActiveWorkspaceCapture(workspaceId) {
+    if (workspaceId === undefined || workspaceId === null)
+      return false;
+    const key = workspaceId.toString();
+    return (activeWorkspaceCaptures[key] || 0) > 0;
   }
 
   // Set focused window

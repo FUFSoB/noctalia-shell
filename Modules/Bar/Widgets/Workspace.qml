@@ -781,7 +781,7 @@ Item {
 
             readonly property bool isFocused: modelData?.isFocused ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
-            readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && CompositorService.hasActiveWholeOutputCapture(root.screenName)
+            readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
 
             width: root.iconSize
             height: root.iconSize
