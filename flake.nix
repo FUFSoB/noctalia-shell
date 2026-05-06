@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     noctalia-qs = {
-      url = "github:noctalia-dev/noctalia-qs";
+      url = "github:FUFSoB/noctalia-qs";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

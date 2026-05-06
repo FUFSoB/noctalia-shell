@@ -13,7 +13,9 @@ Item {
   property var windows: []
   property int focusedWindowIndex: -1
 
+  property bool blockOutEnabled: false
   property bool overviewActive: false
+  property var activeWholeOutputCaptures: ({})
 
   property var keyboardLayouts: []
 
@@ -29,11 +31,15 @@ Item {
     Niri.refreshOutputs();
     Niri.refreshWorkspaces();
     Niri.refreshWindows();
+    Niri.refreshBlockOutState();
+    Niri.refreshCasts();
 
     Qt.callLater(() => {
                    safeUpdateOutputs();
                    safeUpdateWorkspaces();
                    safeUpdateWindows();
+                   safeUpdateCaptures();
+                   blockOutEnabled = Niri.blockOutEnabled;
                    queryDisplayScales();
                  });
 
@@ -52,9 +58,15 @@ Item {
       windowListChanged();
       activeWindowChanged();
     }
+    function onCastsUpdated() {
+      safeUpdateCaptures();
+    }
     function onOutputsUpdated() {
       safeUpdateOutputs();
       queryDisplayScales();
+    }
+    function onBlockOutEnabledChanged() {
+      blockOutEnabled = Niri.blockOutEnabled;
     }
     function onOverviewActiveChanged() {
       overviewActive = Niri.overviewActive;
@@ -184,6 +196,7 @@ Item {
                          "appId": win.appId || "",
                          "workspaceId": win.workspaceId || -1,
                          "isFocused": win.focused,
+                         "isBlockOut": win.isBlockOut,
                          "output": win.output || getWindowOutput(win) || "",
                          "position": {
                            "x": win.isFloating ? floatingWindowPosition : win.positionX,
@@ -194,6 +207,23 @@ Item {
 
     windows = toSortedWindowList(windowsList);
     safeUpdateFocusedWindow();
+  }
+
+  function safeUpdateCaptures() {
+    const niriCasts = Niri.casts.values;
+    const captureMap = {};
+
+    for (var i = 0; i < niriCasts.length; i++) {
+      const cast = niriCasts[i];
+      if (!cast.isActive || cast.targetType !== "output" || !cast.targetOutput) {
+        continue;
+      }
+
+      const outputName = cast.targetOutput.toLowerCase();
+      captureMap[outputName] = (captureMap[outputName] || 0) + 1;
+    }
+
+    activeWholeOutputCaptures = captureMap;
   }
 
   function safeUpdateFocusedWindow() {

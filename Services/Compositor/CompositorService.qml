@@ -30,6 +30,8 @@ Singleton {
 
   // Overview state (Niri-specific, defaults to false for other compositors)
   property bool overviewActive: false
+  property bool blockOutEnabled: false
+  property var activeWholeOutputCaptures: ({})
 
   // Global workspaces flag (workspaces shared across all outputs)
   // True for LabWC (stacking compositor), false for tiling WMs with per-output workspaces
@@ -241,6 +243,16 @@ Singleton {
                                               overviewActive = backend.overviewActive;
                                             });
     }
+    if (backend.blockOutEnabledChanged) {
+      backend.blockOutEnabledChanged.connect(() => {
+                                              blockOutEnabled = backend.blockOutEnabled;
+                                            });
+    }
+    if (backend.activeWholeOutputCapturesChanged) {
+      backend.activeWholeOutputCapturesChanged.connect(() => {
+                                                    activeWholeOutputCaptures = backend.activeWholeOutputCaptures;
+                                                  });
+    }
 
     // Initial sync
     syncWorkspaces();
@@ -248,6 +260,12 @@ Singleton {
     focusedWindowIndex = backend.focusedWindowIndex;
     if (backend.overviewActive !== undefined) {
       overviewActive = backend.overviewActive;
+    }
+    if (backend.blockOutEnabled !== undefined) {
+      blockOutEnabled = backend.blockOutEnabled;
+    }
+    if (backend.activeWholeOutputCaptures !== undefined) {
+      activeWholeOutputCaptures = backend.activeWholeOutputCaptures;
     }
     if (backend.globalWorkspaces !== undefined) {
       globalWorkspaces = backend.globalWorkspaces;
@@ -380,6 +398,7 @@ Singleton {
                            title: window.title,
                            appId: window.appId,
                            isFocused: window.isFocused,
+                           isBlockOut: window.isBlockOut,
                            workspaceId: window.workspaceId,
                            handle: window.handle
                          });
@@ -425,6 +444,13 @@ Singleton {
       }
     }
     return activeWorkspaces;
+  }
+
+  function hasActiveWholeOutputCapture(outputName) {
+    if (!outputName)
+      return false;
+    const key = outputName.toLowerCase();
+    return (activeWholeOutputCaptures[key] || 0) > 0;
   }
 
   // Set focused window

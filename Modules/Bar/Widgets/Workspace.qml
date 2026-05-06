@@ -780,6 +780,8 @@ Item {
             id: groupedTaskbarItem
 
             readonly property bool isFocused: modelData?.isFocused ?? false
+            readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
+            readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && CompositorService.hasActiveWholeOutputCapture(root.screenName)
 
             width: root.iconSize
             height: root.iconSize
@@ -800,7 +802,7 @@ Item {
               }
               smooth: true
               asynchronous: true
-              opacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
+              opacity: groupedTaskbarItem.shouldDimForCapture ? groupedTaskbarItem.baseOpacity * 0.5 : groupedTaskbarItem.baseOpacity
               layer.enabled: root.colorizeIcons && !groupedTaskbarItem.isFocused
 
               Rectangle {
