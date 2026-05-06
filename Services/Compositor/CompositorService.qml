@@ -407,6 +407,7 @@ Singleton {
                            title: window.title,
                            appId: window.appId,
                            isFocused: window.isFocused,
+                           isUrgent: window.isUrgent,
                            isBlockOut: window.isBlockOut,
                            workspaceId: window.workspaceId,
                            handle: window.handle

@@ -197,6 +197,7 @@ Item {
                          "appId": win.appId || "",
                          "workspaceId": win.workspaceId || -1,
                          "isFocused": win.focused,
+                         "isUrgent": win.urgent,
                          "isBlockOut": win.isBlockOut,
                          "output": win.output || getWindowOutput(win) || "",
                          "position": {

@@ -780,8 +780,10 @@ Item {
             id: groupedTaskbarItem
 
             readonly property bool isFocused: modelData?.isFocused ?? false
+            readonly property bool isUrgent: modelData?.isUrgent ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
+            readonly property int urgentDotSize: Math.max(4, Style.toOdd(root.iconSize * 0.28))
 
             width: root.iconSize
             height: root.iconSize
@@ -822,6 +824,21 @@ Item {
                 property real colorizeMode: 0
                 fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/appicon_colorize.frag.qsb")
               }
+            }
+
+            Rectangle {
+              visible: groupedTaskbarItem.isUrgent
+              z: 2
+              width: groupedTaskbarItem.urgentDotSize
+              height: groupedTaskbarItem.urgentDotSize
+              radius: width / 2
+              color: Color.mError
+              border.color: Color.mSurface
+              border.width: Style.borderS
+              anchors.right: parent.right
+              anchors.bottom: parent.bottom
+              anchors.rightMargin: -Math.max(1, Style.borderS)
+              anchors.bottomMargin: -Math.max(1, Style.borderS)
             }
 
             MouseArea {
