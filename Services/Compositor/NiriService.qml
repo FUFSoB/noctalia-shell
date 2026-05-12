@@ -56,8 +56,12 @@ Item {
     }
     function onWindowsUpdated() {
       safeUpdateWindows();
+      const workspaceUrgencyChanged = updateWorkspaceUrgencyFromWindows();
       windowListChanged();
       activeWindowChanged();
+      if (workspaceUrgencyChanged) {
+        workspaceChanged();
+      }
     }
     function onCastsUpdated() {
       safeUpdateCaptures();
@@ -113,8 +117,25 @@ Item {
     }
   }
 
+  function getUrgentWorkspaceMap() {
+    const niriWindows = Niri.windows.values;
+    const urgentWorkspaceMap = {};
+
+    for (var i = 0; i < niriWindows.length; i++) {
+      const win = niriWindows[i];
+      if (!win || win.workspaceId === undefined || win.workspaceId === null || win.workspaceId < 0 || win.urgent !== true) {
+        continue;
+      }
+
+      urgentWorkspaceMap[win.workspaceId] = true;
+    }
+
+    return urgentWorkspaceMap;
+  }
+
   function safeUpdateWorkspaces() {
     const niriWorkspaces = Niri.workspaces.values;
+    const urgentWorkspaceMap = getUrgentWorkspaceMap();
     workspaceCache = {};
 
     const workspacesList = [];
@@ -127,7 +148,7 @@ Item {
         "output": ws.output,
         "isFocused": ws.focused,
         "isActive": ws.active,
-        "isUrgent": ws.urgent,
+        "isUrgent": urgentWorkspaceMap[ws.id] === true,
         "isOccupied": ws.occupied
       };
       workspacesList.push(wsData);
@@ -139,6 +160,28 @@ Item {
     for (var j = 0; j < workspacesList.length; j++) {
       workspaces.append(workspacesList[j]);
     }
+  }
+
+  function updateWorkspaceUrgencyFromWindows() {
+    const urgentWorkspaceMap = getUrgentWorkspaceMap();
+    var changed = false;
+
+    for (var i = 0; i < workspaces.count; i++) {
+      const workspace = workspaces.get(i);
+      const isUrgent = urgentWorkspaceMap[workspace.id] === true;
+
+      if (workspace.isUrgent === isUrgent) {
+        continue;
+      }
+
+      workspaces.setProperty(i, "isUrgent", isUrgent);
+      if (workspaceCache[workspace.id]) {
+        workspaceCache[workspace.id].isUrgent = isUrgent;
+      }
+      changed = true;
+    }
+
+    return changed;
   }
 
   function getWindowOutput(win) {
