@@ -78,6 +78,7 @@ Item {
     return calculatedWidth;
   }
   readonly property bool showPinnedApps: (widgetSettings.showPinnedApps !== undefined) ? widgetSettings.showPinnedApps : widgetMetadata.showPinnedApps
+  readonly property color mirroredIndicatorColor: "#4da3ff"
 
   // Context menu state - store ID instead of object reference to avoid stale references
   property string selectedWindowId: ""
@@ -684,11 +685,13 @@ Item {
           readonly property bool isPinned: modelData.type === "pinned" || modelData.type === "pinned-running"
           readonly property bool isFocused: isRunning && modelData.window && modelData.window.isFocused
           readonly property bool isPinnedRunning: isPinned && isRunning && !isFocused
+          readonly property bool isMirrored: isRunning && modelData.window && modelData.window.isMirrored === true
           readonly property bool isHovered: root.hoveredWindowId === modelData.id
 
           readonly property bool shouldShowTitle: root.showTitle && modelData.type !== "pinned"
           readonly property real itemSpacing: Style.marginS
           readonly property real contentWidth: shouldShowTitle ? root.itemSize + itemSpacing + root.titleWidth : root.itemSize
+          readonly property int statusDotSize: Math.min(root.itemSize - 1, Math.max(6, Style.toOdd(root.itemSize * 0.4)))
 
           readonly property string title: modelData.title || modelData.appId || "Unknown application"
           readonly property color titleBgColor: (isHovered || isFocused) ? Color.mHover : Style.capsuleColor
@@ -865,6 +868,21 @@ Item {
 
                       fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/appicon_colorize.frag.qsb")
                     }
+                  }
+
+                  Rectangle {
+                    visible: taskbarItem.isMirrored
+                    z: 2
+                    width: taskbarItem.statusDotSize
+                    height: taskbarItem.statusDotSize
+                    radius: width / 2
+                    color: root.mirroredIndicatorColor
+                    border.color: Color.mSurface
+                    border.width: Style.borderS
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.leftMargin: -Math.max(1, Style.borderS)
+                    anchors.topMargin: -Math.max(1, Style.borderS)
                   }
 
                   Rectangle {

@@ -89,6 +89,7 @@ Item {
   readonly property int baseItemSize: Style.toOdd(capsuleHeight * 0.8)
   readonly property int iconSize: Style.toOdd(baseItemSize * iconScale)
   readonly property real textRatio: 0.50
+  readonly property color mirroredIndicatorColor: "#4da3ff"
 
   // Context menu state for grouped mode - store IDs instead of object references to avoid stale references
   property string selectedWindowId: ""
@@ -781,6 +782,7 @@ Item {
 
             readonly property bool isFocused: modelData?.isFocused ?? false
             readonly property bool isUrgent: modelData?.isUrgent ?? false
+            readonly property bool isMirrored: modelData?.isMirrored ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
             readonly property int urgentDotSize: Math.min(root.iconSize - 1, Math.max(6, Style.toOdd(root.iconSize * 0.4)))
@@ -824,6 +826,21 @@ Item {
                 property real colorizeMode: 0
                 fragmentShader: Qt.resolvedUrl(Quickshell.shellDir + "/Shaders/qsb/appicon_colorize.frag.qsb")
               }
+            }
+
+            Rectangle {
+              visible: groupedTaskbarItem.isMirrored
+              z: 2
+              width: groupedTaskbarItem.urgentDotSize
+              height: groupedTaskbarItem.urgentDotSize
+              radius: width / 2
+              color: root.mirroredIndicatorColor
+              border.color: Color.mSurface
+              border.width: Style.borderS
+              anchors.left: parent.left
+              anchors.top: parent.top
+              anchors.leftMargin: -Math.max(1, Style.borderS)
+              anchors.topMargin: -Math.max(1, Style.borderS)
             }
 
             Rectangle {

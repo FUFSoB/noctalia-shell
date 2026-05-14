@@ -241,6 +241,8 @@ Item {
                          "workspaceId": win.workspaceId || -1,
                          "isFocused": win.focused,
                          "isUrgent": win.urgent,
+                         "isMirrored": win.isMirror,
+                         "sourceWindowId": win.sourceWindowId,
                          "isBlockOut": win.isBlockOut,
                          "output": win.output || getWindowOutput(win) || "",
                          "position": {

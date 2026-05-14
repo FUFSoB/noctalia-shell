@@ -408,7 +408,9 @@ Singleton {
                            appId: window.appId,
                            isFocused: window.isFocused,
                            isUrgent: window.isUrgent,
+                           isMirrored: window.isMirrored,
                            isBlockOut: window.isBlockOut,
+                           sourceWindowId: window.sourceWindowId,
                            workspaceId: window.workspaceId,
                            handle: window.handle
                          });
