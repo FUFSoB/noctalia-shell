@@ -193,14 +193,31 @@ Item {
     return null;
   }
 
+  function getActiveWorkspaceForOutput(outputName) {
+    if (!outputName) {
+      return null;
+    }
+
+    for (var i = 0; i < workspaces.count; i++) {
+      const workspace = workspaces.get(i);
+      if (workspace.output === outputName && workspace.isActive) {
+        return workspace;
+      }
+    }
+
+    return null;
+  }
+
   function toSortedWindowList(windowList) {
     return windowList.map(win => {
                             const workspace = workspaceCache[win.workspaceId];
-                            const output = (workspace && workspace.output) ? outputCache[workspace.output] : null;
+                            const resolvedOutput = (workspace && workspace.output) ? workspace.output : win.output;
+                            const fallbackWorkspace = workspace || getActiveWorkspaceForOutput(resolvedOutput);
+                            const output = resolvedOutput ? outputCache[resolvedOutput] : null;
 
                             return {
                               window: win,
-                              workspaceIdx: workspace ? workspace.idx : 0,
+                              workspaceIdx: fallbackWorkspace ? fallbackWorkspace.idx : 0,
                               outputX: output ? output.x : 0,
                               outputY: output ? output.y : 0
                             };
@@ -234,17 +251,20 @@ Item {
 
     for (var i = 0; i < niriWindows.length; i++) {
       const win = niriWindows[i];
+      const workspaceId = (win.workspaceId !== undefined && win.workspaceId !== null && win.workspaceId >= 0) ? win.workspaceId : -1;
+      const output = win.output || getWindowOutput(win) || "";
       windowsList.push({
                          "id": win.id,
                          "title": win.title || "",
                          "appId": win.appId || "",
-                         "workspaceId": win.workspaceId || -1,
-                         "isFocused": win.focused,
-                         "isUrgent": win.urgent,
-                         "isMirrored": win.isMirror,
+                         "workspaceId": workspaceId,
+                         "isFocused": win.focused === true,
+                         "isUrgent": win.urgent === true,
+                         "isMirrored": win.isMirror === true,
+                         "isSticky": win.isSticky === true,
                          "sourceWindowId": win.sourceWindowId,
-                         "isBlockOut": win.isBlockOut,
-                         "output": win.output || getWindowOutput(win) || "",
+                         "isBlockOut": win.isBlockOut === true,
+                         "output": output,
                          "position": {
                            "x": win.isFloating ? floatingWindowPosition : win.positionX,
                            "y": win.isFloating ? floatingWindowPosition : win.positionY

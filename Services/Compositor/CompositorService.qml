@@ -395,11 +395,36 @@ Singleton {
     return name.charAt(0).toUpperCase() + name.slice(1);
   }
 
-  function getWindowsForWorkspace(workspaceId) {
+  function hasActiveWorkspaceOnOutput(outputName) {
+    if (!outputName)
+      return false;
+
+    const normalizedOutput = outputName.toLowerCase();
+    for (var i = 0; i < workspaces.count; i++) {
+      const workspace = workspaces.get(i);
+      if (workspace.isActive && workspace.output && workspace.output.toLowerCase() === normalizedOutput) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function getWindowsForWorkspace(workspaceId, options) {
+    options = options || {};
+
+    const includeStickyActive = options.includeStickyActive === true;
+    const isWorkspaceActive = options.isActive === true;
+    const workspaceOutput = (options.output || "").toLowerCase();
     var windowsInWs = [];
     for (var i = 0; i < windows.count; i++) {
       var window = windows.get(i);
-      if (window.workspaceId === workspaceId) {
+      const matchesWorkspace = window.workspaceId === workspaceId;
+      const matchesStickyActive = includeStickyActive && isWorkspaceActive && window.isSticky === true
+          && workspaceOutput !== "" && window.output
+          && window.output.toLowerCase() === workspaceOutput;
+
+      if (matchesWorkspace || matchesStickyActive) {
         // Snapshot to plain JS object so callers never hold live ListModel
         // proxies that become invalid when syncWindows() clears the model.
         windowsInWs.push({
@@ -409,9 +434,11 @@ Singleton {
                            isFocused: window.isFocused,
                            isUrgent: window.isUrgent,
                            isMirrored: window.isMirrored,
+                           isSticky: window.isSticky,
                            isBlockOut: window.isBlockOut,
                            sourceWindowId: window.sourceWindowId,
                            workspaceId: window.workspaceId,
+                           output: window.output,
                            handle: window.handle
                          });
       }

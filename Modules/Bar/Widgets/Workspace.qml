@@ -90,6 +90,7 @@ Item {
   readonly property int iconSize: Style.toOdd(baseItemSize * iconScale)
   readonly property real textRatio: 0.50
   readonly property color mirroredIndicatorColor: "#4da3ff"
+  readonly property color stickyIndicatorColor: "#4caf50"
 
   // Context menu state for grouped mode - store IDs instead of object references to avoid stale references
   property string selectedWindowId: ""
@@ -702,7 +703,11 @@ Item {
       function updateWindows() {
         var wsId = workspaceModel?.id;
         if (wsId !== undefined && wsId !== null) {
-          liveWindows = CompositorService.getWindowsForWorkspace(wsId);
+          liveWindows = CompositorService.getWindowsForWorkspace(wsId, {
+                                                                   "output": workspaceModel?.output || "",
+                                                                   "isActive": workspaceModel?.isActive === true,
+                                                                   "includeStickyActive": true
+                                                                 });
         } else {
           liveWindows = [];
         }
@@ -783,6 +788,7 @@ Item {
             readonly property bool isFocused: modelData?.isFocused ?? false
             readonly property bool isUrgent: modelData?.isUrgent ?? false
             readonly property bool isMirrored: modelData?.isMirrored ?? false
+            readonly property bool isSticky: modelData?.isSticky ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
             readonly property int urgentDotSize: Math.min(root.iconSize - 1, Math.max(6, Style.toOdd(root.iconSize * 0.4)))
@@ -856,6 +862,21 @@ Item {
               anchors.bottom: parent.bottom
               anchors.rightMargin: -Math.max(1, Style.borderS)
               anchors.bottomMargin: -Math.max(1, Style.borderS)
+            }
+
+            Rectangle {
+              visible: groupedTaskbarItem.isSticky
+              z: 2
+              width: groupedTaskbarItem.urgentDotSize
+              height: groupedTaskbarItem.urgentDotSize
+              radius: width / 2
+              color: root.stickyIndicatorColor
+              border.color: Color.mSurface
+              border.width: Style.borderS
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.rightMargin: -Math.max(1, Style.borderS)
+              anchors.topMargin: -Math.max(1, Style.borderS)
             }
 
             MouseArea {

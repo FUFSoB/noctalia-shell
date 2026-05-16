@@ -79,6 +79,7 @@ Item {
   }
   readonly property bool showPinnedApps: (widgetSettings.showPinnedApps !== undefined) ? widgetSettings.showPinnedApps : widgetMetadata.showPinnedApps
   readonly property color mirroredIndicatorColor: "#4da3ff"
+  readonly property color stickyIndicatorColor: "#4caf50"
 
   // Context menu state - store ID instead of object reference to avoid stale references
   property string selectedWindowId: ""
@@ -350,7 +351,8 @@ Item {
     // First pass: Add all running windows
     try {
       const total = CompositorService.windows.count || 0;
-      const activeIds = CompositorService.getActiveWorkspaces().map(function (ws) {
+      const activeWorkspaces = CompositorService.getActiveWorkspaces();
+      const activeIds = activeWorkspaces.map(function (ws) {
         return ws.id;
       });
 
@@ -359,7 +361,9 @@ Item {
         if (!w)
           continue;
         var passOutput = (!onlySameOutput) || (w.output == screen?.name);
-        var passWorkspace = (!onlyActiveWorkspaces) || (activeIds.includes(w.workspaceId));
+        var passWorkspace = (!onlyActiveWorkspaces)
+            || (activeIds.includes(w.workspaceId))
+            || (w.isSticky === true && CompositorService.hasActiveWorkspaceOnOutput(w.output));
         if (passOutput && passWorkspace) {
           const isPinned = isAppIdPinned(w.appId, pinnedApps);
           runningWindows.push({
@@ -686,6 +690,7 @@ Item {
           readonly property bool isFocused: isRunning && modelData.window && modelData.window.isFocused
           readonly property bool isPinnedRunning: isPinned && isRunning && !isFocused
           readonly property bool isMirrored: isRunning && modelData.window && modelData.window.isMirrored === true
+          readonly property bool isSticky: isRunning && modelData.window && modelData.window.isSticky === true
           readonly property bool isHovered: root.hoveredWindowId === modelData.id
 
           readonly property bool shouldShowTitle: root.showTitle && modelData.type !== "pinned"
@@ -882,6 +887,21 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.leftMargin: -Math.max(1, Style.borderS)
+                    anchors.topMargin: -Math.max(1, Style.borderS)
+                  }
+
+                  Rectangle {
+                    visible: taskbarItem.isSticky
+                    z: 2
+                    width: taskbarItem.statusDotSize
+                    height: taskbarItem.statusDotSize
+                    radius: width / 2
+                    color: root.stickyIndicatorColor
+                    border.color: Color.mSurface
+                    border.width: Style.borderS
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.rightMargin: -Math.max(1, Style.borderS)
                     anchors.topMargin: -Math.max(1, Style.borderS)
                   }
 
