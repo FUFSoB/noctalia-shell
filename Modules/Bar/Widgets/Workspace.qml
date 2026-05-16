@@ -91,6 +91,7 @@ Item {
   readonly property real textRatio: 0.50
   readonly property color mirroredIndicatorColor: "#4da3ff"
   readonly property color stickyIndicatorColor: "#4caf50"
+  readonly property color floatingIndicatorColor: "#4da9a8"
 
   // Context menu state for grouped mode - store IDs instead of object references to avoid stale references
   property string selectedWindowId: ""
@@ -788,10 +789,12 @@ Item {
             readonly property bool isFocused: modelData?.isFocused ?? false
             readonly property bool isUrgent: modelData?.isUrgent ?? false
             readonly property bool isMirrored: modelData?.isMirrored ?? false
+            readonly property bool isFloating: CompositorService.isNiri && (modelData?.isFloating ?? false)
             readonly property bool isSticky: modelData?.isSticky ?? false
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
             readonly property int urgentDotSize: Math.min(root.iconSize - 1, Math.max(6, Style.toOdd(root.iconSize * 0.4)))
+            readonly property color topRightIndicatorColor: isSticky ? root.stickyIndicatorColor : root.floatingIndicatorColor
 
             width: root.iconSize
             height: root.iconSize
@@ -865,12 +868,12 @@ Item {
             }
 
             Rectangle {
-              visible: groupedTaskbarItem.isSticky
+              visible: groupedTaskbarItem.isSticky || groupedTaskbarItem.isFloating
               z: 2
               width: groupedTaskbarItem.urgentDotSize
               height: groupedTaskbarItem.urgentDotSize
               radius: width / 2
-              color: root.stickyIndicatorColor
+              color: groupedTaskbarItem.topRightIndicatorColor
               border.color: Color.mSurface
               border.width: Style.borderS
               anchors.right: parent.right

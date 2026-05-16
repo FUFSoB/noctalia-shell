@@ -80,6 +80,7 @@ Item {
   readonly property bool showPinnedApps: (widgetSettings.showPinnedApps !== undefined) ? widgetSettings.showPinnedApps : widgetMetadata.showPinnedApps
   readonly property color mirroredIndicatorColor: "#4da3ff"
   readonly property color stickyIndicatorColor: "#4caf50"
+  readonly property color floatingIndicatorColor: "#4da9a8"
 
   // Context menu state - store ID instead of object reference to avoid stale references
   property string selectedWindowId: ""
@@ -690,8 +691,10 @@ Item {
           readonly property bool isFocused: isRunning && modelData.window && modelData.window.isFocused
           readonly property bool isPinnedRunning: isPinned && isRunning && !isFocused
           readonly property bool isMirrored: isRunning && modelData.window && modelData.window.isMirrored === true
+          readonly property bool isFloating: CompositorService.isNiri && isRunning && modelData.window && modelData.window.isFloating === true
           readonly property bool isSticky: isRunning && modelData.window && modelData.window.isSticky === true
           readonly property bool isHovered: root.hoveredWindowId === modelData.id
+          readonly property color topRightIndicatorColor: isSticky ? root.stickyIndicatorColor : root.floatingIndicatorColor
 
           readonly property bool shouldShowTitle: root.showTitle && modelData.type !== "pinned"
           readonly property real itemSpacing: Style.marginS
@@ -891,12 +894,12 @@ Item {
                   }
 
                   Rectangle {
-                    visible: taskbarItem.isSticky
+                    visible: taskbarItem.isSticky || taskbarItem.isFloating
                     z: 2
                     width: taskbarItem.statusDotSize
                     height: taskbarItem.statusDotSize
                     radius: width / 2
-                    color: root.stickyIndicatorColor
+                    color: taskbarItem.topRightIndicatorColor
                     border.color: Color.mSurface
                     border.width: Style.borderS
                     anchors.right: parent.right

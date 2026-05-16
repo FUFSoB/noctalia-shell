@@ -261,6 +261,7 @@ Item {
                          "isFocused": win.focused === true,
                          "isUrgent": win.urgent === true,
                          "isMirrored": win.isMirror === true,
+                         "isFloating": win.isFloating === true,
                          "isSticky": win.isSticky === true,
                          "sourceWindowId": win.sourceWindowId,
                          "isBlockOut": win.isBlockOut === true,

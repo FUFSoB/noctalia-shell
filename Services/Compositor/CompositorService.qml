@@ -434,6 +434,7 @@ Singleton {
                            isFocused: window.isFocused,
                            isUrgent: window.isUrgent,
                            isMirrored: window.isMirrored,
+                           isFloating: window.isFloating,
                            isSticky: window.isSticky,
                            isBlockOut: window.isBlockOut,
                            sourceWindowId: window.sourceWindowId,
