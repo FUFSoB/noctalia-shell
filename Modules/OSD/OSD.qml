@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Services.Compositor
 import qs.Services.Hardware
 import qs.Services.Keyboard
 import qs.Services.Media
@@ -22,7 +23,7 @@ Variants {
     LockKey
   }
 
-  model: Quickshell.screens.filter(screen => (Settings.data.osd.monitors.includes(screen.name) || Settings.data.osd.monitors.length === 0) && Settings.data.osd.enabled)
+  model: CompositorService.renderableScreens(Quickshell.screens).filter(screen => (Settings.data.osd.monitors.includes(screen.name) || Settings.data.osd.monitors.length === 0) && Settings.data.osd.enabled)
 
   delegate: Loader {
     id: root

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons
+import qs.Services.Compositor
 import qs.Services.Hardware
 import qs.Widgets
 
@@ -12,10 +13,11 @@ NBox {
   Layout.fillWidth: true
   clip: true
 
-  // Get the primary monitor (first screen)
+  // Get the primary monitor from the first renderable screen
   readonly property var brightnessMonitor: {
-    if (Quickshell.screens.length > 0) {
-      return BrightnessService.getMonitorForScreen(Quickshell.screens[0]);
+    const screen = CompositorService.firstRenderableScreen();
+    if (screen) {
+      return BrightnessService.getMonitorForScreen(screen);
     }
     return null;
   }

@@ -27,6 +27,8 @@ Singleton {
   // Display scale data
   property var displayScales: ({})
   property bool displayScalesLoaded: false
+  readonly property int maxRenderableOutputDimension: 16384
+  property var _ignoredOversizedOutputs: ({})
 
   // Overview state (Niri-specific, defaults to false for other compositors)
   property bool overviewActive: false
@@ -64,6 +66,49 @@ Singleton {
         loadDisplayScalesFromState();
       }
     }
+  }
+
+  function _outputLogKey(screen) {
+    if (!screen) {
+      return "unknown";
+    }
+    return screen.name || `${screen.width || 0}x${screen.height || 0}@${screen.x || 0},${screen.y || 0}`;
+  }
+
+  function isRenderableScreen(screen) {
+    if (!screen) {
+      return false;
+    }
+
+    const width = Math.round(Number(screen.width) || 0);
+    const height = Math.round(Number(screen.height) || 0);
+    const key = _outputLogKey(screen);
+    const signature = `${width}x${height}`;
+    const oversized = width > maxRenderableOutputDimension || height > maxRenderableOutputDimension;
+
+    if (oversized) {
+      if (_ignoredOversizedOutputs[key] !== signature) {
+        _ignoredOversizedOutputs[key] = signature;
+        Logger.w("CompositorService", `Ignoring oversized output "${key}" (${signature}); exceeds safe render limit ${maxRenderableOutputDimension}`);
+      }
+      return false;
+    }
+
+    if (_ignoredOversizedOutputs[key] !== undefined) {
+      delete _ignoredOversizedOutputs[key];
+    }
+
+    return true;
+  }
+
+  function renderableScreens(screens) {
+    const candidates = screens || Quickshell.screens || [];
+    return candidates.filter(screen => isRenderableScreen(screen));
+  }
+
+  function firstRenderableScreen() {
+    const screens = renderableScreens(Quickshell.screens);
+    return screens.length > 0 ? screens[0] : null;
   }
 
   function detectCompositor() {

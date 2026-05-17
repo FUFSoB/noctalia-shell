@@ -143,9 +143,10 @@ Singleton {
   function findFallbackScreen() {
     let primaryCandidate = null;
     let firstScreen = null;
+    const screens = CompositorService.renderableScreens(Quickshell.screens);
 
-    for (let i = 0; i < Quickshell.screens.length; i++) {
-      const s = Quickshell.screens[i];
+    for (let i = 0; i < screens.length; i++) {
+      const s = screens[i];
       if (s.x === 0 && s.y === 0) {
         primaryCandidate = s;
       }
@@ -211,6 +212,9 @@ Singleton {
 
   // Check if panels can be shown on a given screen (has bar enabled or allowPanelsOnScreenWithoutBar)
   function canShowPanelsOnScreen(screen) {
+    if (!CompositorService.isRenderableScreen(screen)) {
+      return false;
+    }
     const name = screen?.name || "";
     const monitors = Settings.data.bar.monitors || [];
     const allowPanelsOnScreenWithoutBar = Settings.data.general.allowPanelsOnScreenWithoutBar;
@@ -219,9 +223,10 @@ Singleton {
 
   // Find a screen that can show panels
   function findScreenForPanels() {
-    for (let i = 0; i < Quickshell.screens.length; i++) {
-      if (canShowPanelsOnScreen(Quickshell.screens[i])) {
-        return Quickshell.screens[i];
+    const screens = CompositorService.renderableScreens(Quickshell.screens);
+    for (let i = 0; i < screens.length; i++) {
+      if (canShowPanelsOnScreen(screens[i])) {
+        return screens[i];
       }
     }
     return null;

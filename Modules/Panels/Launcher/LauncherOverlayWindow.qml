@@ -13,7 +13,7 @@ import qs.Widgets
 Variants {
   id: launcherVariants
 
-  model: Quickshell.screens.filter(screen => Settings.data.appLauncher.overviewLayer)
+  model: Settings.data.appLauncher.overviewLayer ? CompositorService.renderableScreens(Quickshell.screens) : []
 
   delegate: Loader {
     id: windowLoader

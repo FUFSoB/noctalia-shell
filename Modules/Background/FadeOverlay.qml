@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Services.Compositor
 import qs.Services.Power
 
 /**
@@ -20,7 +21,7 @@ Item {
     asynchronous: false
 
     sourceComponent: Variants {
-      model: Quickshell.screens
+      model: CompositorService.renderableScreens(Quickshell.screens)
       delegate: PanelWindow {
         id: overlay
         required property ShellScreen modelData

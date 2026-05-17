@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Modules.Panels.Settings
+import qs.Services.Compositor
 import qs.Services.Noctalia
 import qs.Services.UI
 
@@ -1142,8 +1143,8 @@ Singleton {
     api.withCurrentScreen = function (callback) {
       // Detect which screen the cursor is on and call callback with that screen
       if (!root.screenDetector) {
-        Logger.w("PluginAPI", "Screen detector not available, using primary screen");
-        callback(Quickshell.screens[0]);
+        Logger.w("PluginAPI", "Screen detector not available, using first renderable screen");
+        callback(CompositorService.firstRenderableScreen());
         return;
       }
       root.screenDetector.withCurrentScreen(callback);
@@ -1465,8 +1466,8 @@ Singleton {
               }
             });
           } else {
-            // Fallback to primary screen if screen detector is not available
-            var panel = PanelService.getPanel("settingsPanel", Quickshell.screens[0]);
+            // Fallback to the first renderable screen if screen detector is not available
+            var panel = PanelService.getPanel("settingsPanel", CompositorService.firstRenderableScreen());
             if (panel) {
               panel.requestedTab = SettingsPanel.Tab.Plugins;
               panel.open();

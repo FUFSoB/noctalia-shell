@@ -11,7 +11,7 @@ Loader {
   active: CompositorService.isNiri && Settings.data.wallpaper.enabled && Settings.data.wallpaper.overviewEnabled && (!PowerProfileService.noctaliaPerformanceMode || !Settings.data.noctaliaPerformance.disableWallpaper)
 
   sourceComponent: Variants {
-    model: Quickshell.screens
+    model: CompositorService.renderableScreens(Quickshell.screens)
 
     delegate: PanelWindow {
       id: panelWindow

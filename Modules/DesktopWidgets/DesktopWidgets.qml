@@ -13,7 +13,7 @@ import qs.Widgets
 
 Variants {
   id: root
-  model: Quickshell.screens
+  model: CompositorService.renderableScreens(Quickshell.screens)
 
   // Direct binding to registry's widgets property for reactivity
   readonly property var registeredWidgets: DesktopWidgetRegistry.widgets

@@ -15,7 +15,7 @@ Loader {
 
   active: Settings.data.dock.enabled
   sourceComponent: Variants {
-    model: Quickshell.screens
+    model: CompositorService.renderableScreens(Quickshell.screens)
 
     delegate: Item {
       id: root

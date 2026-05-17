@@ -4,13 +4,14 @@ import Quickshell.Wayland
 
 import qs.Commons
 import qs.Modules.MainScreen
+import qs.Services.Compositor
 import qs.Services.UI
 
 // ------------------------------
 // MainScreen for each screen (manages bar + all panels)
 // Wrapped in Loader to optimize memory - only loads when screen needs it
 Variants {
-  model: Quickshell.screens
+  model: CompositorService.renderableScreens(Quickshell.screens)
   delegate: Item {
     id: windowItem
     required property ShellScreen modelData

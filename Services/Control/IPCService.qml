@@ -616,10 +616,11 @@ Singleton {
 
     function get(screen: string): string {
       if (screen === "all" || screen === "") {
-        if (Quickshell.screens.length > 1) {
+        if (CompositorService.renderableScreens(Quickshell.screens).length > 1) {
           return JSON.stringify(WallpaperService.getWallpapersEffectiveMap());
         }
-        return WallpaperService.getWallpaper(Quickshell.screens[0].name) ?? "";
+        var defaultScreen = CompositorService.firstRenderableScreen();
+        return defaultScreen ? (WallpaperService.getWallpaper(defaultScreen.name) ?? "") : "";
       } else {
         var found = Quickshell.screens.find(s => s.name === screen);
         if (!found) {

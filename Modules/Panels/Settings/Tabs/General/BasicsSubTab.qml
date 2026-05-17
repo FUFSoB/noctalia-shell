@@ -175,7 +175,7 @@ ColumnLayout {
       outlined: true
       Layout.fillWidth: true
       onClicked: {
-        var targetScreen = PanelService.openedPanel ? PanelService.openedPanel.screen : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null);
+        var targetScreen = PanelService.openedPanel ? PanelService.openedPanel.screen : PanelService.findScreenForPanels();
         if (!targetScreen) {
           return;
         }

@@ -8,7 +8,7 @@ import qs.Services.UI
 
 Variants {
   id: backgroundVariants
-  model: Quickshell.screens
+  model: CompositorService.renderableScreens(Quickshell.screens)
 
   delegate: Loader {
 

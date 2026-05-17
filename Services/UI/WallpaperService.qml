@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Services.Compositor
 import qs.Services.Power
 import qs.Services.Theming
 import qs.Services.UI
@@ -1471,10 +1472,11 @@ Singleton {
         scr = undefined;
       } else if (screenName !== undefined && screenName !== null && screenName !== "") {
         scr = screenName;
-      } else if (Quickshell.screens.length > 0) {
-        scr = Quickshell.screens[0].name;
       } else {
-        scr = undefined;
+        scr = root.firstRenderableScreenName();
+        if (scr === "") {
+          scr = undefined;
+        }
       }
       root.changeWallpaper(path, scr, slot);
       root.applyFavoriteTheme(path, scr, slot);
@@ -1514,11 +1516,16 @@ Singleton {
     }
   }
 
+  function firstRenderableScreenName() {
+    const screen = CompositorService.firstRenderableScreen();
+    return screen ? screen.name : "";
+  }
+
   // When light/dark changes (or on startup), re-load scheme from the favorite for the wallpaper now shown for that slot.
   function reapplyFavoriteThemeForActiveWallpaper() {
     var effectiveMonitor = Settings.data.colorSchemes.monitorForColors;
     if (effectiveMonitor === "" || effectiveMonitor === undefined) {
-      effectiveMonitor = Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "";
+      effectiveMonitor = root.firstRenderableScreenName();
     }
     var wp = getWallpaper(effectiveMonitor);
     if (!wp || isSolidColorPath(wp)) {
@@ -1537,7 +1544,7 @@ Singleton {
     // Only apply theme if the wallpaper is on the monitor driving colors
     var effectiveMonitor = Settings.data.colorSchemes.monitorForColors;
     if (effectiveMonitor === "" || effectiveMonitor === undefined) {
-      effectiveMonitor = Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "";
+      effectiveMonitor = root.firstRenderableScreenName();
     }
     if (screenName !== undefined && screenName !== effectiveMonitor) {
       return;
@@ -1592,7 +1599,7 @@ Singleton {
   function _updateCurrentWallpaperFavorites() {
     var effectiveMonitor = Settings.data.colorSchemes.monitorForColors;
     if (effectiveMonitor === "" || effectiveMonitor === undefined) {
-      effectiveMonitor = Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "";
+      effectiveMonitor = root.firstRenderableScreenName();
     }
     var wp = getWallpaper(effectiveMonitor);
     if (!wp) {

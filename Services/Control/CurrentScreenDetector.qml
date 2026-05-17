@@ -42,70 +42,79 @@ Item {
   * Prioritizes the screen at position 0x0 (likely the primary screen).
   */
   function findScreenWithBar(): var {
-  const monitors = Settings.data.bar.monitors || [];
-  let primaryCandidate = null;
-  let firstWithBar = null;
+    const monitors = Settings.data.bar.monitors || [];
+    const screens = CompositorService.renderableScreens(Quickshell.screens);
+    let primaryCandidate = null;
+    let firstWithBar = null;
 
-  for (let i = 0; i < Quickshell.screens.length; i++) {
-    const s = Quickshell.screens[i];
-    const hasBar = monitors.length === 0 || monitors.includes(s.name);
+    for (let i = 0; i < screens.length; i++) {
+      const s = screens[i];
+      const hasBar = monitors.length === 0 || monitors.includes(s.name);
 
-    if (hasBar) {
-      // Check if this is at 0x0 (primary position)
-      if (s.x === 0 && s.y === 0) {
-        primaryCandidate = s;
-      }
+      if (hasBar) {
+        // Check if this is at 0x0 (primary position)
+        if (s.x === 0 && s.y === 0) {
+          primaryCandidate = s;
+        }
         // Track first screen with bar as fallback
         if (!firstWithBar) {
           firstWithBar = s;
         }
+      }
+    }
+
+    // Prefer primary (0x0), then first with bar, then just first renderable screen
+    return primaryCandidate || firstWithBar || screens[0] || null;
+  }
+
+  /**
+  * Execute callback with the screen where the cursor currently is.
+  * On single-monitor setups, executes immediately.
+  * On multi-monitor setups, briefly opens an invisible window to detect the screen.
+  */
+  function withCurrentScreen(callback: var, skipBarCheck: bool) {
+    if (root.pendingCallback) {
+      Logger.w("CurrentScreenDetector", "Another detection is pending, ignoring new call");
+      return;
+    }
+
+    const screens = CompositorService.renderableScreens(Quickshell.screens);
+
+    // Single monitor setup can execute immediately
+    if (screens.length <= 1) {
+      callback(screens[0] || null);
+      return;
+    }
+
+    // Try compositor-specific focused monitor detection first
+    let screen = CompositorService.getFocusedScreen();
+    if (screen && !CompositorService.isRenderableScreen(screen)) {
+      screen = null;
+    }
+
+    if (screen) {
+      // Apply the bar check if configured (skip for overlay launcher etc.)
+      if (!skipBarCheck && !Settings.data.general.allowPanelsOnScreenWithoutBar) {
+        const monitors = Settings.data.bar.monitors || [];
+        const hasBar = monitors.length === 0 || monitors.includes(screen.name);
+        if (!hasBar) {
+          screen = findScreenWithBar();
         }
-        }
+      }
 
-          // Prefer primary (0x0), then first with bar, then just first screen
-          return primaryCandidate || firstWithBar || Quickshell.screens[0];
-        }
+      if (screen) {
+        Logger.d("CurrentScreenDetector", "Using compositor-detected screen:", screen.name);
+        callback(screen);
+        return;
+      }
+    }
 
-          /**
-          * Execute callback with the screen where the cursor currently is.
-          * On single-monitor setups, executes immediately.
-          * On multi-monitor setups, briefly opens an invisible window to detect the screen.
-          */
-          function withCurrentScreen(callback: var, skipBarCheck: bool) {
-          if (root.pendingCallback) {
-            Logger.w("CurrentScreenDetector", "Another detection is pending, ignoring new call");
-            return;
-          }
-
-            // Single monitor setup can execute immediately
-            if (Quickshell.screens.length === 1) {
-              callback(Quickshell.screens[0]);
-              return;
-            }
-
-              // Try compositor-specific focused monitor detection first
-              let screen = CompositorService.getFocusedScreen();
-
-              if (screen) {
-                // Apply the bar check if configured (skip for overlay launcher etc.)
-                if (!skipBarCheck && !Settings.data.general.allowPanelsOnScreenWithoutBar) {
-                  const monitors = Settings.data.bar.monitors || [];
-                  const hasBar = monitors.length === 0 || monitors.includes(screen.name);
-                  if (!hasBar) {
-                    screen = findScreenWithBar();
-                  }
-                  }
-                    Logger.d("CurrentScreenDetector", "Using compositor-detected screen:", screen.name);
-                    callback(screen);
-                    return;
-                  }
-
-                    // Fallback: Multi-monitor setup needs async detection via invisible PanelWindow
-                    root.detectedScreen = null;
-                    root.pendingCallback = callback;
-                    root.pendingSkipBarCheck = !!skipBarCheck;
-                    screenDetectorLoader.active = true;
-                  }
+    // Fallback: Multi-monitor setup needs async detection via invisible PanelWindow
+    root.detectedScreen = null;
+    root.pendingCallback = callback;
+    root.pendingSkipBarCheck = !!skipBarCheck;
+    screenDetectorLoader.active = true;
+  }
 
                     Timer {
                       id: screenDetectorDebounce
@@ -116,6 +125,10 @@ Item {
 
                         // Execute pending callback if any
                         if (root.pendingCallback) {
+                          if (!CompositorService.isRenderableScreen(root.detectedScreen)) {
+                            root.detectedScreen = findScreenWithBar() || CompositorService.firstRenderableScreen();
+                          }
+
                           if (!root.pendingSkipBarCheck && !Settings.data.general.allowPanelsOnScreenWithoutBar) {
                             // If we explicitly disabled panels on screen without bar, check if bar is configured
                             // for this screen, and fallback to primary screen if necessary
@@ -126,7 +139,7 @@ Item {
                             }
                           }
 
-                          Logger.d("CurrentScreenDetector", "Executing callback on screen:", root.detectedScreen.name);
+                          Logger.d("CurrentScreenDetector", "Executing callback on screen:", root.detectedScreen?.name || "null");
                           // Store callback locally and clear pendingCallback first to prevent deadlock
                           // if the callback throws an error
                           var callback = root.pendingCallback;
