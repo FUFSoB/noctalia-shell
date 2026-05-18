@@ -118,6 +118,7 @@ Item {
   property int iconRevision: 0
   // Revision counter to force window list re-evaluation (for liveWindows binding in grouped mode)
   property int windowRevision: 0
+  property int captureRevision: 0
 
   property ListModel localWorkspaces: ListModel {}
   property int lastFocusedWorkspaceId: -1
@@ -311,6 +312,9 @@ Item {
     }
     function onActiveWorkspaceCapturesChanged() {
       scheduleRefresh();
+    }
+    function onActiveWindowCapturesChanged() {
+      root.captureRevision++;
     }
     function onWindowListChanged() {
       if (appVisible || showLabelsOnlyWhenOccupied) {
@@ -801,6 +805,10 @@ Item {
             readonly property bool isMirrored: modelData?.isMirrored ?? false
             readonly property bool isFloating: CompositorService.isNiri && (modelData?.isFloating ?? false)
             readonly property bool isSticky: modelData?.isSticky ?? false
+            readonly property bool isCaptureTarget: {
+              root.captureRevision;
+              return CompositorService.hasActiveWindowCapture(modelData?.id);
+            }
             readonly property real baseOpacity: groupedTaskbarItem.isFocused ? Style.opacityFull : unfocusedIconsOpacity
             readonly property bool shouldDimForCapture: !!(modelData?.isBlockOut) && CompositorService.blockOutEnabled && (CompositorService.hasActiveWorkspaceCapture(groupedContainer.workspaceModel?.id) || CompositorService.hasActiveWholeOutputCapture(root.screenName))
             readonly property int urgentDotSize: Math.min(root.iconSize - 1, Math.max(6, Style.toOdd(root.iconSize * 0.4)))
@@ -860,6 +868,21 @@ Item {
               anchors.top: parent.top
               anchors.leftMargin: -Math.max(1, Style.borderS)
               anchors.topMargin: -Math.max(1, Style.borderS)
+            }
+
+            Rectangle {
+              visible: groupedTaskbarItem.isCaptureTarget
+              z: 2
+              width: groupedTaskbarItem.urgentDotSize
+              height: groupedTaskbarItem.urgentDotSize
+              radius: width / 2
+              color: Color.mTertiary
+              border.color: Color.mSurface
+              border.width: Style.borderS
+              anchors.left: parent.left
+              anchors.bottom: parent.bottom
+              anchors.leftMargin: -Math.max(1, Style.borderS)
+              anchors.bottomMargin: -Math.max(1, Style.borderS)
             }
 
             Rectangle {
