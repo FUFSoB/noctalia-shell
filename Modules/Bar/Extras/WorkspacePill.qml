@@ -89,6 +89,8 @@ Item {
         return Color.resolveColorKey(focusedColor);
       if (workspace.isUrgent)
         return Color.mError;
+      if (workspace.isCaptured)
+        return Color.mTertiary;
       if (workspace.isOccupied)
         return Color.resolveColorKey(occupiedColor);
       return Qt.alpha(Color.resolveColorKey(emptyColor), 0.3);
@@ -131,6 +133,8 @@ Item {
               return Color.resolveOnColorKey(focusedColor);
             if (workspace.isUrgent)
               return Color.mOnError;
+            if (workspace.isCaptured)
+              return Color.mOnTertiary;
             if (workspace.isOccupied)
               return Color.resolveOnColorKey(occupiedColor);
             return Color.resolveOnColorKey(emptyColor);

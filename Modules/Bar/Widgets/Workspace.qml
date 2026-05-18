@@ -225,6 +225,10 @@ Item {
     return -1;
   }
 
+  function workspaceHasActiveCapture(workspaceId) {
+    return CompositorService.hasActiveWorkspaceCapture(workspaceId);
+  }
+
   function switchByOffset(offset) {
     if (localWorkspaces.count <= 1)
       return;
@@ -305,6 +309,9 @@ Item {
     function onWorkspacesChanged() {
       scheduleRefresh();
     }
+    function onActiveWorkspaceCapturesChanged() {
+      scheduleRefresh();
+    }
     function onWindowListChanged() {
       if (appVisible || showLabelsOnlyWhenOccupied) {
         root.windowRevision++;
@@ -342,12 +349,13 @@ Item {
       const screenName = screen.name.toLowerCase();
       for (var i = 0; i < CompositorService.workspaces.count; i++) {
         const ws = CompositorService.workspaces.get(i);
+        const isCaptured = root.workspaceHasActiveCapture(ws.id);
         // For global workspaces (e.g., LabWC), show all workspaces on all screens
         const matchesScreen = CompositorService.globalWorkspaces || (followFocusedScreen && ws.output.toLowerCase() == focusedOutput) || (!followFocusedScreen && ws.output.toLowerCase() == screenName);
 
         if (!matchesScreen)
           continue;
-        if (hideUnoccupied && !ws.isOccupied && !ws.isFocused)
+        if (hideUnoccupied && !ws.isOccupied && !ws.isFocused && !isCaptured)
           continue;
 
         // Create a plain JS object for the workspace data
@@ -359,7 +367,8 @@ Item {
           isFocused: ws.isFocused,
           isActive: ws.isActive,
           isUrgent: ws.isUrgent,
-          isOccupied: ws.isOccupied
+          isOccupied: ws.isOccupied,
+          isCaptured: isCaptured
         };
 
         if (ws.handle !== null && ws.handle !== undefined) {
@@ -697,6 +706,7 @@ Item {
 
       required property var model
       property var workspaceModel: model
+      readonly property bool isCaptured: workspaceModel?.isCaptured === true
       // Fetch windows directly from service to avoid Qt 6.9 ListModel nested array issues
       property var liveWindows: []
       property bool hasWindows: liveWindows.length > 0
@@ -943,6 +953,8 @@ Item {
               return Color.resolveColorKey(root.focusedColor);
             if (groupedContainer.workspaceModel.isUrgent)
               return Color.mError;
+            if (groupedContainer.isCaptured)
+              return Color.mTertiary;
             if (groupedContainer.hasWindows)
               return Color.resolveColorKey(root.occupiedColor);
 
@@ -1012,6 +1024,8 @@ Item {
               return Color.resolveOnColorKey(root.focusedColor);
             if (groupedContainer.workspaceModel.isUrgent)
               return Color.mOnError;
+            if (groupedContainer.isCaptured)
+              return Color.mOnTertiary;
             if (groupedContainer.hasWindows)
               return Color.resolveOnColorKey(root.occupiedColor);
 
