@@ -55,11 +55,16 @@ Item {
     return implicit > 0 ? implicit : titleText.item.width;
   }
   readonly property real measuredWidth: scrollContainer.width
+  readonly property bool hasOverflow: contentWidth > maxWidth
+  readonly property real effectiveFadeExtent: Math.max(0, Math.min(0.5, fadeExtent))
+  readonly property real fadeActivationEpsilon: 0.01
+  readonly property bool leadingFadeActive: hasOverflow && scrollContainer.x < -fadeActivationEpsilon
+  readonly property bool trailingFadeActive: hasOverflow
 
   implicitWidth: alwaysMaxWidth ? maxWidth : Math.min(maxWidth, contentWidth)
   implicitHeight: titleText.height
 
-  layer.enabled: contentWidth > maxWidth
+  layer.enabled: hasOverflow
   layer.effect: MultiEffect {
     maskEnabled: true
     maskThresholdMin: 0.5
@@ -206,19 +211,19 @@ Item {
     gradient: Gradient {
       GradientStop {
         position: 0.0
-        color: "transparent"
+        color: root.leadingFadeActive ? "transparent" : "white"
       }
       GradientStop {
-        position: fadeExtent
+        position: root.leadingFadeActive ? root.effectiveFadeExtent : 0.0
         color: "white"
       }
       GradientStop {
-        position: 1 - fadeExtent
+        position: root.trailingFadeActive ? 1 - root.effectiveFadeExtent : 1.0
         color: "white"
       }
       GradientStop {
         position: 1.0
-        color: "transparent"
+        color: root.trailingFadeActive ? "transparent" : "white"
       }
       orientation: Gradient.Horizontal
     }
