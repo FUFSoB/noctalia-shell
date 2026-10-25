@@ -28,7 +28,7 @@
 
 namespace {
   [[nodiscard]] bool isEmptyWorkspace(const Workspace& workspace) {
-    return !workspace.occupied && !workspace.active && !workspace.urgent;
+    return !workspace.occupied && !workspace.active && !workspace.urgent && !workspace.cast;
   }
 
   constexpr float kWorkspaceGap = Style::spaceXs;
@@ -79,7 +79,7 @@ WorkspacesWidget::WorkspacesWidget(
       m_inactivePillSize(std::clamp(options.inactivePillSize, 0.25F, 8.0F)), m_style(options.style),
       m_focusedOutputOnly(options.focusedOutputOnly), m_changeColorOnHover(options.changeColorOnHover),
       m_focusedColor(options.focusedColor), m_occupiedColor(options.occupiedColor), m_emptyColor(options.emptyColor),
-      m_urgentColor(options.urgentColor) {
+      m_urgentColor(options.urgentColor), m_castColor(options.castColor) {
   buildDesktopIconIndex();
 }
 
@@ -288,7 +288,9 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
         structuralChange = true;
         break;
       }
-      if (a.workspace.active != b.workspace.active || a.workspace.urgent != b.workspace.urgent) {
+      if (a.workspace.active != b.workspace.active
+          || a.workspace.urgent != b.workspace.urgent
+          || a.workspace.cast != b.workspace.cast) {
         activeChange = true;
       }
       if (a.workspace.occupied != b.workspace.occupied) {
@@ -1499,6 +1501,9 @@ ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_ou
   if (workspace.urgent) {
     return m_urgentColor;
   }
+  if (workspace.cast) {
+    return m_castColor;
+  }
   if (workspace.occupied) {
     return m_occupiedColor;
   }
@@ -1510,6 +1515,9 @@ ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_ou
 ColorSpec WorkspacesWidget::workspaceTextColor(const Workspace& workspace, wl_output* output) const {
   if (workspace.urgent) {
     return isMinimal() ? m_urgentColor : readableColorForFill(m_urgentColor);
+  }
+  if (workspace.cast && !workspace.active) {
+    return isMinimal() ? m_castColor : readableColorForFill(m_castColor);
   }
   if (!isMinimal()) {
     return readableColorForFill(workspaceFillColor(workspace, output));

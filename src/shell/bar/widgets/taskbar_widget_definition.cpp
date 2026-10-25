@@ -37,7 +37,8 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
   using noctalia::bar::field;
   using Options = TaskbarWidgetOptions;
 
-  static const noctalia::bar::WidgetDefinition<Options>
+  using Definition = noctalia::bar::WidgetDefinition<Options>;
+  static const Definition
       definition{
           .type = "taskbar",
           .fields =
@@ -67,6 +68,34 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                       .maxValue = 1.0,
                       .step = 0.01,
                       .presentation = presentation("taskbar.windows"),
+                  }),
+                  field<&Options::highlightUrgentWindows>({
+                      .key = "highlight_urgent_windows",
+                      .presentation = presentation("taskbar.windows"),
+                  }),
+                  field<&Options::highlightCastWindows>({
+                      .key = "highlight_cast_windows",
+                      .presentation = presentation("taskbar.windows"),
+                  }),
+                  field<&Options::castColor>({
+                      .key = "cast_color",
+                      .presentation = presentation("taskbar.windows"),
+                  }),
+                  field<&Options::showWindowStates>({
+                      .key = "show_window_states",
+                      .presentation = presentation("taskbar.windows"),
+                  }),
+                  field<&Options::mirrorColor>({
+                      .key = "mirror_color",
+                      .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
+                  }),
+                  field<&Options::stickyColor>({
+                      .key = "sticky_color",
+                      .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
+                  }),
+                  field<&Options::floatingColor>({
+                      .key = "floating_color",
+                      .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
                   }),
                   field<&Options::iconScale>({
                       .key = "icon_scale",
@@ -120,54 +149,39 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                           })
                       ),
                   }),
-                  field<&Options::taskbarMaxWidth>(
-                      {
-                          .key = "taskbar_max_width",
-                          .minValue = 10.0,
-                          .maxValue = 8192.0,
-                          .step = 1.0,
-                          .presentation =
-                              presentation(
-                                  "taskbar.windows",
-                                  all(
-                                      {
-                                          {"show_window_title", {"true"}},
-                                          {"group_by_workspace", {"false"}},
-                                      }
-                                  )
-                              ),
-                      }
-                  ),
-                  field<&Options::showRunning>(
-                      {
-                          .key = "show_running",
-                          .presentation = presentation("taskbar.windows", matches("group_by_workspace", {"false"})),
-                      }
-                  ),
-                  field<&Options::onlyActiveWorkspace>(
-                      {
-                          .key = "only_active_workspace",
-                          .presentation = presentation("taskbar.grouping", std::nullopt, true),
-                      }
-                  ),
-                  field<&Options::groupByWorkspace>(
-                      {
-                          .key = "group_by_workspace",
-                          .presentation = presentation("taskbar.grouping", std::nullopt, true),
-                      }
-                  ),
-                  field<&Options::hideEmptyWorkspaces>(
-                      {
-                          .key = "hide_empty_workspaces",
-                          .presentation = presentation("taskbar.grouping", groupedOnly(), true),
-                      }
-                  ),
-                  field<&Options::hiddenWorkspaces>(
-                      {
-                          .key = "hidden_workspaces",
-                          .presentation = presentation("taskbar.grouping", std::nullopt, true),
-                      }
-                  ),
+                  field<&Options::taskbarMaxWidth>({
+                      .key = "taskbar_max_width",
+                      .minValue = 10.0,
+                      .maxValue = 8192.0,
+                      .step = 1.0,
+                      .presentation = presentation(
+                          "taskbar.windows",
+                          all({
+                              {"show_window_title", {"true"}},
+                              {"group_by_workspace", {"false"}},
+                          })
+                      ),
+                  }),
+                  field<&Options::showRunning>({
+                      .key = "show_running",
+                      .presentation = presentation("taskbar.windows", matches("group_by_workspace", {"false"})),
+                  }),
+                  field<&Options::onlyActiveWorkspace>({
+                      .key = "only_active_workspace",
+                      .presentation = presentation("taskbar.grouping", std::nullopt, true),
+                  }),
+                  field<&Options::groupByWorkspace>({
+                      .key = "group_by_workspace",
+                      .presentation = presentation("taskbar.grouping", std::nullopt, true),
+                  }),
+                  field<&Options::hideEmptyWorkspaces>({
+                      .key = "hide_empty_workspaces",
+                      .presentation = presentation("taskbar.grouping", groupedOnly(), true),
+                  }),
+                  field<&Options::hiddenWorkspaces>({
+                      .key = "hidden_workspaces",
+                      .presentation = presentation("taskbar.grouping", std::nullopt, true),
+                  }),
                   field<&Options::workspaceGroupContent>(
                       {
                           .key = "workspace_group_content",
@@ -252,30 +266,24 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                           .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
                       }
                   ),
-                  field<&Options::minimal>(
-                      {
-                          .key = "minimal",
-                          .presentation = presentation(
-                              "taskbar.workspace-labels",
-                              all(
-                                  {
-                                      {"group_by_workspace", {"true"}},
-                                      {"show_workspace_label", {"true"}},
-                                  }
-                              ),
-                              true, "settings.widgets.settings.minimal.taskbar-description"
-                          ),
-                      }
-                  ),
-                  field<&Options::focusedOutputOnly>(
-                      {
-                          .key = "focused_output_only",
-                          .presentation = presentation(
-                              "taskbar.workspace-labels", groupedOnly(), true,
-                              "settings.widgets.settings.focused-output-only.taskbar-description"
-                          ),
-                      }
-                  ),
+                  field<&Options::minimal>({
+                      .key = "minimal",
+                      .presentation = presentation(
+                          "taskbar.workspace-labels",
+                          all({
+                              {"group_by_workspace", {"true"}},
+                              {"show_workspace_label", {"true"}},
+                          }),
+                          true, "settings.widgets.settings.minimal.taskbar-description"
+                      ),
+                  }),
+                  field<&Options::focusedOutputOnly>({
+                      .key = "focused_output_only",
+                      .presentation = presentation(
+                          "taskbar.workspace-labels", groupedOnly(), true,
+                          "settings.widgets.settings.focused-output-only.taskbar-description"
+                      ),
+                  }),
                   field<&Options::focusedColor>({
                       .key = "focused_color",
                       .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
@@ -290,7 +298,7 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                   }),
                   field<&Options::urgentColor>({
                       .key = "urgent_color",
-                      .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
+                      .presentation = presentation("taskbar.windows"),
                   }),
               },
           .commonOverrides = {

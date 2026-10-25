@@ -5,6 +5,7 @@
 
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <algorithm>
 #include <dlfcn.h>
 #include <format>
 #include <stdexcept>
@@ -207,6 +208,36 @@ void GlSharedContext::initialize(wl_display* display, bool createSharedContext) 
     kLog.info("initialized EGL {}.{} with shared root context", major, minor);
   } else {
     kLog.info("initialized EGL {}.{} without shared context (isolated GPU contexts)", major, minor);
+  }
+  queryMaxRenderDimension();
+}
+
+void GlSharedContext::queryMaxRenderDimension() {
+  EGLContext context = m_rootContext;
+  if (context == EGL_NO_CONTEXT) {
+    context = createContextWithCurrentAttributes(EGL_NO_CONTEXT);
+  }
+  if (context == EGL_NO_CONTEXT || eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, context) != EGL_TRUE) {
+    kLog.warn("could not query GL render limits; oversized outputs will not be filtered");
+  } else {
+    GLint textureSize = 0;
+    GLint renderbufferSize = 0;
+    GLint viewportDims[2] = {0, 0};
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &textureSize);
+    glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &renderbufferSize);
+    glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewportDims);
+    int limit = 0;
+    for (const GLint value : {textureSize, renderbufferSize, viewportDims[0], viewportDims[1]}) {
+      if (value > 0) {
+        limit = limit == 0 ? value : std::min(limit, static_cast<int>(value));
+      }
+    }
+    m_maxRenderDimension = limit;
+    kLog.debug("GL render limit {}px", m_maxRenderDimension);
+    eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+  }
+  if (context != EGL_NO_CONTEXT && context != m_rootContext) {
+    eglDestroyContext(m_display, context);
   }
 }
 

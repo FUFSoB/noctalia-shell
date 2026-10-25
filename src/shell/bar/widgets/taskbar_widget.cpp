@@ -45,6 +45,22 @@ namespace {
   constexpr auto kDragHoldDelay = std::chrono::milliseconds(300);
   // Lifts the dragged tile above the rest of the strip while it follows the pointer.
   constexpr std::int32_t kDragTileZIndex = 200;
+  // Tiles whose windows are blocked out of an active cast fade to this share of their opacity.
+  constexpr float kHiddenFromCastOpacity = 0.5F;
+  constexpr float kUrgentFillAlpha = 0.35F;
+
+  // Window state shared by every window a tile stands for. A tile reads as hidden from a cast
+  // only when all of its windows are.
+  void mergeWindowAttributes(WindowAttributes& into, const WindowAttributes& other) {
+    into.urgent = into.urgent || other.urgent;
+    into.floating = into.floating || other.floating;
+    into.sticky = into.sticky || other.sticky;
+    into.mirror = into.mirror || other.mirror;
+    into.mirrorLinked = into.mirrorLinked || other.mirrorLinked;
+    into.blockOut = into.blockOut || other.blockOut;
+    into.cast = into.cast || other.cast;
+    into.hiddenFromCast = into.hiddenFromCast && other.hiddenFromCast;
+  }
 
   // Integer centering; optional odd spare pixel on the end side (right/bottom).
   [[nodiscard]] float centeredOffset(float extent, float content, float inset = 0.0F, bool oddSpareOnEnd = true) {
@@ -216,6 +232,7 @@ TaskbarWidget::TaskbarWidget(
       m_inactiveOpacity(m_configOptions.inactiveOpacity), m_pinnedOpacity(m_configOptions.pinnedOpacity),
       m_focusedColor(m_configOptions.focusedColor), m_occupiedColor(m_configOptions.occupiedColor),
       m_emptyColor(m_configOptions.emptyColor), m_urgentColor(m_configOptions.urgentColor),
+      m_castColor(m_configOptions.castColor),
       m_windowTitleMaxWidth(static_cast<float>(m_configOptions.windowTitleMaxWidth)),
       m_taskbarMaxWidth(static_cast<float>(m_configOptions.taskbarMaxWidth)),
       m_barPosition(std::move(context.barPosition)), m_barName(std::move(context.barName)),
@@ -306,7 +323,9 @@ bool TaskbarWidget::allWindowsMinimized(const TaskModel& task) {
   return task.running && task.instanceCount > 0 && task.minimizedCount == task.instanceCount;
 }
 
-std::string TaskbarWidget::taskTooltip(const TaskModel& task, std::size_t minimizedCount, std::size_t windowCount) {
+std::string TaskbarWidget::taskTooltip(
+    const TaskModel& task, std::size_t minimizedCount, std::size_t windowCount, const WindowAttributes& attributes
+) {
   std::string text = displayTitle(task);
   if (minimizedCount > 0) {
     if (!text.empty()) {
@@ -314,6 +333,29 @@ std::string TaskbarWidget::taskTooltip(const TaskModel& task, std::size_t minimi
     }
     text +=
         windowCount == 1 ? i18n::tr("common.minimized") : i18n::tr("common.minimized-count", "count", minimizedCount);
+  }
+
+  std::string states;
+  const auto addState = [&states](bool present, const char* key) {
+    if (!present) {
+      return;
+    }
+    if (!states.empty()) {
+      states += " \u00B7 ";
+    }
+    states += i18n::tr(key);
+  };
+  addState(attributes.urgent, "bar.widgets.taskbar.window-states.urgent");
+  addState(attributes.cast, "bar.widgets.taskbar.window-states.cast");
+  addState(attributes.hiddenFromCast, "bar.widgets.taskbar.window-states.hidden-from-cast");
+  addState(attributes.mirror, "bar.widgets.taskbar.window-states.mirror");
+  addState(attributes.sticky, "bar.widgets.taskbar.window-states.sticky");
+  addState(attributes.floating, "bar.widgets.taskbar.window-states.floating");
+  if (!states.empty()) {
+    if (!text.empty()) {
+      text += '\n';
+    }
+    text += states;
   }
   return text;
 }
@@ -1002,6 +1044,15 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
       }
     }
     const std::size_t windowCount = cycleCandidates.empty() ? task.instanceCount : cycleCandidates.size();
+    WindowAttributes attributes = task.attributes;
+    for (const TaskRef candidate : cycleCandidates) {
+      const TaskModel* member = resolveTask(m_tasks, candidate, m_taskGeneration);
+      if (member != nullptr && member != &task) {
+        mergeWindowAttributes(attributes, member->attributes);
+      }
+    }
+    const float opacityFactor =
+        m_configOptions.highlightCastWindows && attributes.hiddenFromCast ? kHiddenFromCastOpacity : 1.0F;
     auto area = ui::inputArea({});
     area->setFrameSize(tileWidthWithTitle, tileSize);
     float tileOpacity = task.active ? m_activeOpacity : m_inactiveOpacity;
@@ -1009,7 +1060,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
     if (task.pinned && !task.running) {
       tileOpacity *= m_pinnedOpacity;
     }
-    area->setOpacity(tileOpacity);
+    area->setOpacity(tileOpacity * opacityFactor);
     area->setAcceptedButtons(InputArea::buttonMask({BTN_LEFT, BTN_RIGHT, BTN_MIDDLE}));
     auto* dragArea = area.get();
     const bool tileDraggable = taskRef.index < draggableTileCount;
@@ -1241,6 +1292,34 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
     minus->setPosition(std::round((markerWidth - minusWidth) * 0.5F), std::round((markerHeight - minusHeight) * 0.5F));
     minimizeIndicator->addChild(std::move(minus));
     iconHost->addChild(std::move(minimizeIndicator));
+
+    if (m_configOptions.showWindowStates) {
+      // Top-left: what the window is (a mirror); top-right: where it lives (sticky, else floating).
+      const float stateDotSize = std::min(iconSize, std::round(std::max(5.0F * m_contentScale, iconSize * 0.32F)));
+      const float stateDotOutset = std::round(std::max(1.0F, m_contentScale));
+      auto addStateDot = [&](const ColorSpec& color, bool right) {
+        auto dot = ui::box({
+            .fill = color,
+            .border = colorSpecFromRole(ColorRole::Surface),
+            .borderWidth = m_contentScale,
+            .radius = stateDotSize * 0.5F,
+            .width = stateDotSize,
+            .height = stateDotSize,
+            .participatesInLayout = false,
+        });
+        dot->setHitTestVisible(false);
+        dot->setPosition(right ? iconSize - stateDotSize + stateDotOutset : -stateDotOutset, -stateDotOutset);
+        iconHost->addChild(std::move(dot));
+      };
+      if (attributes.mirror) {
+        addStateDot(m_configOptions.mirrorColor, false);
+      }
+      if (attributes.sticky) {
+        addStateDot(m_configOptions.stickyColor, true);
+      } else if (attributes.floating) {
+        addStateDot(m_configOptions.floatingColor, true);
+      }
+    }
     content->addChild(std::move(iconHost));
 
     Label* titleLabelPtr = nullptr;
@@ -1256,6 +1335,33 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
       titleLabelPtr = label.get();
       label->measure(renderer);
       content->addChild(std::move(label));
+    }
+
+    const float tileRadius = resolvedBarCapsuleRadius(tileWidthWithTitle, tileSize);
+    if (m_configOptions.highlightUrgentWindows && attributes.urgent) {
+      auto urgentFill = ui::box({
+          .fill = scaleAlpha(m_urgentColor, kUrgentFillAlpha),
+          .radius = tileRadius,
+          .width = tileWidthWithTitle,
+          .height = tileSize,
+          .participatesInLayout = false,
+          .configure = [](Box& box) { box.setZIndex(-2); },
+      });
+      urgentFill->setHitTestVisible(false);
+      area->addChild(std::move(urgentFill));
+    }
+    if (m_configOptions.highlightCastWindows && attributes.cast) {
+      auto castRing = ui::box({
+          .fill = clearColorSpec(),
+          .border = m_castColor,
+          .borderWidth = std::max(1.0F, std::round(1.5F * m_contentScale)),
+          .radius = tileRadius,
+          .width = tileWidthWithTitle,
+          .height = tileSize,
+          .participatesInLayout = false,
+      });
+      castRing->setHitTestVisible(false);
+      area->addChild(std::move(castRing));
     }
 
     area->addChild(std::move(content));
@@ -1316,7 +1422,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
     }
     // Installed even for a currently empty title: a title arriving later must surface without a
     // rebuild. Empty content measures to nothing, so the popup never shows.
-    area->setTooltipProvider([this, taskRef, tooltipCandidates] -> TooltipContent {
+    area->setTooltipProvider([this, taskRef, tooltipCandidates, attributes] -> TooltipContent {
       const TaskModel* current = resolveTask(m_tasks, taskRef, m_taskGeneration);
       if (current == nullptr) {
         return TooltipContent{std::monostate{}};
@@ -1332,7 +1438,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
         }
       }
       const std::size_t count = tooltipCandidates.empty() ? current->instanceCount : tooltipCandidates.size();
-      const std::string text = taskTooltip(*current, minimized, count);
+      const std::string text = taskTooltip(*current, minimized, count, attributes);
       return !text.empty() ? TooltipContent{text} : TooltipContent{std::monostate{}};
     });
     m_taskTiles.push_back({
@@ -1341,6 +1447,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
         .titleLabel = titleLabelPtr,
         .activeIndicator = indicatorPtr,
         .minimizeIndicator = minimizeIndicatorPtr,
+        .opacityFactor = opacityFactor,
     });
     attachHover(*area, tileWidthWithTitle, tileSize);
     return area;
@@ -2769,6 +2876,21 @@ void TaskbarWidget::updateModels() {
     }
   }
 
+  {
+    std::unordered_map<std::string_view, const WindowAttributes*> attributesByWindowId;
+    attributesByWindowId.reserve(workspaceAssignments.size());
+    for (const auto& assignment : workspaceAssignments) {
+      if (!assignment.windowId.empty()) {
+        attributesByWindowId.emplace(assignment.windowId, &assignment.attributes);
+      }
+    }
+    for (auto& task : nextTasks) {
+      const std::string_view windowId = workspaceBindingWindowId(task);
+      const auto it = windowId.empty() ? attributesByWindowId.end() : attributesByWindowId.find(windowId);
+      task.attributes = it != attributesByWindowId.end() ? *it->second : WindowAttributes{};
+    }
+  }
+
   std::unordered_map<std::uintptr_t, std::string> previousWorkspaceByHandle;
   previousWorkspaceByHandle.reserve(m_tasks.size());
   for (const auto& task : m_tasks) {
@@ -2876,7 +2998,7 @@ void TaskbarWidget::updateModels() {
       return std::ranges::any_of(tasks, [&](const auto& t) { return taskInWorkspaceGroup(t, wsm); });
     };
     std::erase_if(nextWorkspaces, [&](const WorkspaceModel& wsm) {
-      return !wsm.workspace.active && !workspaceHasTask(wsm, nextTasks);
+      return !wsm.workspace.active && !wsm.workspace.cast && !workspaceHasTask(wsm, nextTasks);
     });
   } else {
     m_allWorkspaces.clear();
@@ -2935,7 +3057,7 @@ void TaskbarWidget::updateModels() {
             if (task.pinned && !task.running) {
               opacity *= m_pinnedOpacity;
             }
-            tile.area->setOpacity(opacity);
+            tile.area->setOpacity(opacity * tile.opacityFactor);
           }
           if (tile.activeIndicator != nullptr) {
             tile.activeIndicator->setVisible(task.active);
@@ -3121,6 +3243,22 @@ void TaskbarWidget::openTaskContextMenu(const TaskModel& task, InputArea& area, 
     minimizeActions.emplace(minimizeId, MinimizeMenuAction{.window = window, .minimized = state->minimized});
     --minimizeId;
   }
+  // IDs -200.. => compositor window actions for the primary window.
+  const std::string compositorWindowId = task.running ? task.exactWindowId : std::string{};
+  std::unordered_map<std::int32_t, std::string> compositorActions;
+  if (const auto actions = m_platform.windowActions(compositorWindowId); !actions.empty()) {
+    if (!entries.empty()) {
+      entries.push_back(
+          ContextMenuControlEntry{.id = -3, .label = {}, .enabled = false, .separator = true, .hasSubmenu = false}
+      );
+    }
+    std::int32_t actionId = -200;
+    for (const auto& action : actions) {
+      entries.push_back(ContextMenuControlEntry{.id = actionId, .label = i18n::tr(action.labelKey)});
+      compositorActions.emplace(actionId, action.id);
+      --actionId;
+    }
+  }
   if (showClose) {
     if (!entries.empty()) {
       entries.push_back(
@@ -3158,7 +3296,12 @@ void TaskbarWidget::openTaskContextMenu(const TaskModel& task, InputArea& area, 
   }
   m_contextMenuPopup->setShadowConfig(m_configService.config().shell.shadow);
   m_contextMenuPopup->setOnActivate([this, entryActions, entryAppName, entryWorkingDir, entryTerminal, menuEntry,
-                                     isPinned, infoClose, minimizeActions](const ContextMenuControlEntry& entry) {
+                                     isPinned, infoClose, minimizeActions, compositorWindowId,
+                                     compositorActions](const ContextMenuControlEntry& entry) {
+    if (const auto action = compositorActions.find(entry.id); action != compositorActions.end()) {
+      (void)m_platform.runWindowAction(compositorWindowId, action->second);
+      return;
+    }
     if (const auto action = minimizeActions.find(entry.id); action != minimizeActions.end()) {
       const auto state = m_platform.windowMinimizeState(action->second.window);
       if (state.has_value()) {
@@ -3390,7 +3533,8 @@ TaskbarWidget::ModelComparison TaskbarWidget::compareModels(
         || nextTasks[i].pinned != previousTasks[i].pinned
         || nextTasks[i].running != previousTasks[i].running
         || nextTasks[i].instanceCount != previousTasks[i].instanceCount
-        || nextTasks[i].desktopEntryId != previousTasks[i].desktopEntryId) {
+        || nextTasks[i].desktopEntryId != previousTasks[i].desktopEntryId
+        || nextTasks[i].attributes != previousTasks[i].attributes) {
       return {};
     }
   }
@@ -3402,6 +3546,7 @@ TaskbarWidget::ModelComparison TaskbarWidget::compareModels(
         || a.active != b.active
         || a.urgent != b.urgent
         || a.occupied != b.occupied
+        || a.cast != b.cast
         || nextWorkspaces[i].key != previousWorkspaces[i].key
         || nextWorkspaces[i].label != previousWorkspaces[i].label
         || nextWorkspaces[i].hostOutput != previousWorkspaces[i].hostOutput) {
@@ -3642,6 +3787,10 @@ ColorSpec TaskbarWidget::workspaceFillColor(const WorkspaceModel& model) const {
     return m_urgentColor;
   }
 
+  if (workspace.cast) {
+    return m_castColor;
+  }
+
   if (workspace.occupied) {
     return m_occupiedColor;
   }
@@ -3656,6 +3805,10 @@ ColorSpec TaskbarWidget::workspaceTextColor(const WorkspaceModel& model) const {
 
   if (workspace.urgent) {
     return m_minimal ? m_urgentColor : readableColorForFill(m_urgentColor);
+  }
+
+  if (workspace.cast && !workspace.active) {
+    return m_minimal ? m_castColor : readableColorForFill(m_castColor);
   }
 
   if (!m_minimal) {

@@ -24,6 +24,28 @@ struct Workspace {
   bool active = false;
   bool urgent = false;
   bool occupied = false;
+  // Target of an active screencast (niri workspace casts).
+  bool cast = false;
+};
+
+// Per-window compositor state beyond workspace membership. Only backends that
+// track a field set it; everything stays false elsewhere.
+struct WindowAttributes {
+  bool urgent = false;
+  bool floating = false;
+  // Shown on every workspace of its output (niri fork).
+  bool sticky = false;
+  // A live copy of another window (niri fork).
+  bool mirror = false;
+  bool mirrorLinked = false;
+  // Rendered transparent in screencasts while block-out is enabled (niri fork).
+  bool blockOut = false;
+  // Target of an active screencast.
+  bool cast = false;
+  // Inside an active workspace or output cast, but blocked out of it.
+  bool hiddenFromCast = false;
+
+  bool operator==(const WindowAttributes&) const = default;
 };
 
 struct WorkspaceWindow {
@@ -35,6 +57,7 @@ struct WorkspaceWindow {
   std::int32_t y = 0;
   std::string outputName;
   std::optional<WindowMinimizeState> minimizeState;
+  WindowAttributes attributes;
 };
 
 struct WorkspaceWindowAssignment {
@@ -45,6 +68,13 @@ struct WorkspaceWindowAssignment {
   std::int32_t x = 0;
   std::int32_t y = 0;
   std::optional<WindowMinimizeState> minimizeState;
+  WindowAttributes attributes;
+};
+
+// A compositor-specific action offered in a window's context menu.
+struct CompositorWindowAction {
+  std::string id;
+  std::string labelKey;
 };
 
 struct TaskbarWindowCandidate {
@@ -185,6 +215,10 @@ namespace compositors {
       return std::nullopt;
     }
     virtual bool minimizeWindowById(const std::string& /*windowId*/) { return false; }
+    [[nodiscard]] virtual std::vector<CompositorWindowAction> windowActions(const std::string& /*windowId*/) const {
+      return {};
+    }
+    virtual bool runWindowAction(const std::string& /*windowId*/, std::string_view /*actionId*/) { return false; }
     [[nodiscard]] virtual bool canTrackOverviewState() const noexcept { return false; }
     [[nodiscard]] virtual bool hasOverviewState() const noexcept { return false; }
     [[nodiscard]] virtual bool isOverviewOpen() const noexcept { return true; }

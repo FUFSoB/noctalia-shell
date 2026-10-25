@@ -43,6 +43,7 @@ public:
     ColorSpec occupiedColor = colorSpecFromRole(ColorRole::Secondary);
     ColorSpec emptyColor = colorSpecFromRole(ColorRole::Secondary);
     ColorSpec urgentColor = colorSpecFromRole(ColorRole::Error);
+    ColorSpec castColor = colorSpecFromRole(ColorRole::Tertiary);
     bool changeColorOnHover = true;
     std::size_t maxLabelChars = 1;
     bool labelsOnlyWhenOccupied = false;
@@ -206,4 +207,5 @@ private:
   ColorSpec m_occupiedColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec m_emptyColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec m_urgentColor = colorSpecFromRole(ColorRole::Error);
+  ColorSpec m_castColor = colorSpecFromRole(ColorRole::Tertiary);
 };

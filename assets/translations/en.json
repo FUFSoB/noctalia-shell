@@ -178,6 +178,30 @@
         "system": "System",
         "upload": "Upload"
       },
+      "taskbar": {
+        "window-actions": {
+          "cast-window": "Cast This Window",
+          "create-mirror": "Create Mirror",
+          "float": "Make Floating",
+          "hide-from-casts": "Hide from Screencasts",
+          "link-mirror": "Link Mirror",
+          "reset-mirror-view": "Reset Mirror View",
+          "show-in-casts": "Show in Screencasts",
+          "stick": "Show on All Workspaces",
+          "stop-cast": "Stop Casting",
+          "tile": "Move to Tiling",
+          "unlink-mirror": "Unlink Mirror",
+          "unstick": "Show on One Workspace"
+        },
+        "window-states": {
+          "cast": "Casting",
+          "floating": "Floating",
+          "hidden-from-cast": "Hidden from cast",
+          "mirror": "Mirror",
+          "sticky": "Sticky",
+          "urgent": "Needs attention"
+        }
+      },
       "volume": {
         "device": "Device",
         "mic": "Mic",
@@ -4525,6 +4549,10 @@
           "taskbar-description": "Corner radius for the widget capsule, workspace disc indicators, and workspace group capsules; leave blank for automatic pill shape, or set 0 for square corners",
           "workspaces-description": "Corner radius for this widget capsule and workspace pills; leave blank for automatic pill shape, or set 0 for square corners"
         },
+        "cast-color": {
+          "description": "Color for windows and workspaces that are being screencast; fixed hex colors are also supported",
+          "label": "Cast Color"
+        },
         "centered": {
           "description": "Center visualizer bars instead of aligning them to the edge",
           "label": "Centered"
@@ -4598,6 +4626,10 @@
         "enable-scroll": {
           "description": "Allow mouse wheel and trackpad scroll actions on this widget",
           "label": "Enable Scroll"
+        },
+        "floating-color": {
+          "description": "Color of the dot marking floating windows",
+          "label": "Floating Color"
         },
         "focused-color": {
           "description": "Color role used for the focused workspace; fixed hex colors are also supported",
@@ -4720,9 +4752,17 @@
           "description": "Hide the keyboard layout widget unless more than one layout is configured",
           "label": "Hide When Single Layout"
         },
+        "highlight-cast-windows": {
+          "description": "Outline windows that are being screencast and dim windows blocked out of an active cast",
+          "label": "Highlight Cast Windows"
+        },
         "highlight-color": {
           "description": "Color reached at or above the critical threshold",
           "label": "Highlight Color"
+        },
+        "highlight-urgent-windows": {
+          "description": "Fill the tile of windows that request attention with the urgent color",
+          "label": "Highlight Urgent Windows"
         },
         "hot-reload": {
           "description": "Reload the scripted widget when its source changes",
@@ -4823,6 +4863,10 @@
           "description": "Show workspace ID or name labels only, without animated pills",
           "label": "Minimal Style",
           "taskbar-description": "Text-only workspace labels without colored disc backgrounds"
+        },
+        "mirror-color": {
+          "description": "Color of the dot marking mirrored windows",
+          "label": "Mirror Color"
         },
         "mirrored": {
           "description": "Mirror the visualizer around its center",
@@ -4991,6 +5035,10 @@
           "description": "Keep the brightness widget visible when this monitor has no brightness control",
           "label": "Show When Unavailable"
         },
+        "show-window-states": {
+          "description": "Mark mirrored windows in the top-left corner and sticky or floating windows in the top-right corner",
+          "label": "Show Window States"
+        },
         "show-window-title": {
           "description": "Show the window title next to its icon (only on horizontal bars)",
           "label": "Show Window Title"
@@ -5002,6 +5050,10 @@
         "stat": {
           "description": "System statistic to display",
           "label": "Stat"
+        },
+        "sticky-color": {
+          "description": "Color of the dot marking sticky windows",
+          "label": "Sticky Color"
         },
         "style": {
           "description": "Workspace switcher appearance",
@@ -5037,7 +5089,7 @@
           "label": "Type"
         },
         "urgent-color": {
-          "description": "Color role used for urgent workspaces; fixed hex colors are also supported",
+          "description": "Color role used for urgent windows and workspaces; fixed hex colors are also supported",
           "label": "Urgent Color"
         },
         "vertical-format": {

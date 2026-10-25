@@ -919,10 +919,43 @@ const LayerSurface* WaylandConnection::layerSurfaceOwnerFor(wl_surface* surface)
 }
 
 void WaylandConnection::notifyOutputReady(wl_output* output) {
+  if (auto* out = findOutputByWl(output); out != nullptr) {
+    (void)updateRenderLimitState(*out);
+  }
   if (output == nullptr || m_outputChangeCallback == nullptr) {
     return;
   }
   m_outputChangeCallback();
+}
+
+void WaylandConnection::setMaxRenderableOutputDimension(int pixels) {
+  m_maxRenderableOutputDimension = std::max(0, pixels);
+  bool changed = false;
+  for (auto& out : m_outputs) {
+    changed = updateRenderLimitState(out) || changed;
+  }
+  if (changed && m_outputChangeCallback) {
+    m_outputChangeCallback();
+  }
+}
+
+bool WaylandConnection::updateRenderLimitState(WaylandOutput& out) {
+  const std::int32_t extent = out.bufferExtent();
+  const bool exceeds = m_maxRenderableOutputDimension > 0 && extent > m_maxRenderableOutputDimension;
+  if (exceeds == out.exceedsRenderLimit) {
+    return false;
+  }
+  out.exceedsRenderLimit = exceeds;
+  const std::string_view name = out.connectorName.empty() ? std::string_view("?") : std::string_view(out.connectorName);
+  if (exceeds) {
+    kLog.warn(
+        "ignoring output {} ({}px): larger than the GPU render limit of {}px", name, extent,
+        m_maxRenderableOutputDimension
+    );
+  } else {
+    kLog.info("output {} ({}px) is within the GPU render limit again", name, extent);
+  }
+  return true;
 }
 
 wl_output* WaylandConnection::lastPointerOutput() const noexcept { return m_lastPointerOutput; }
@@ -1341,6 +1374,9 @@ void WaylandConnection::matchPendingOutputHeads() {
       changed = true;
     }
     if (recomputeConfiguredScale(*it)) {
+      changed = true;
+    }
+    if (updateRenderLimitState(*it)) {
       changed = true;
     }
   }

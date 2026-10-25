@@ -823,6 +823,7 @@ void Application::initStyleThemeAndWayland() {
     TextureManager::setGlobalMipmapsEnabled(false);
   }
   m_glShared.initialize(m_wayland.display(), m_configService.config().shell.sharedGlContext);
+  m_wayland.setMaxRenderableOutputDimension(m_glShared.maxRenderDimension());
   auto* sharedGlPtr = m_glShared.hasSharedContext() ? &m_glShared : nullptr;
   m_sharedTextureCache.initialize(sharedGlPtr);
   m_asyncTextureCache.initialize(sharedGlPtr);

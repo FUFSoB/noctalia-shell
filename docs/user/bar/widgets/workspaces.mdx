@@ -27,6 +27,7 @@ Workspace pills use the workspaces widget's resolved `capsule_radius`. Set `[wid
 | `occupied_color`            | string | `"secondary"` | Color role or hex color for occupied (non-focused) workspace pills                                                                                                                                                                                                                 |
 | `empty_color`               | string | `"secondary"` | Color role or hex color for empty workspace pills                                                                                                                                                                                                                                  |
 | `urgent_color`              | string | `"error"`     | Color role or hex color for urgent workspace pills                                                                                                                                                                                                                                 |
+| `cast_color`                | string | `"tertiary"`  | Color role or hex color for workspaces that are being screencast (niri). A cast workspace is never hidden by `hide_when_empty`.                                                                                                                                                    |
 | `change_color_on_hover`     | bool   | `true`        | Use the theme's hover colors while the pointer hovers over a workspace. Minimal style changes the label to the `hover` color; the other styles use `hover` for the fill and `on_hover` for the label. Set to `false` to preserve each workspace's configured color while hovering. |
 | `focused_output_only`       | bool   | `false`       | Only highlight the active workspace on the monitor that has keyboard or pointer focus; other monitors show their active workspace in the occupied color.                                                                                                                           |
 | `labels_only_when_occupied` | bool   | `false`       | Show labels on workspaces with open windows and on the active workspace even when empty; other empty tags stay unlabeled. Requires `show_labels = true`, and does not apply to `focus_hint`, which only ever labels the focused workspace.                                         |
@@ -51,6 +52,7 @@ focused_color = "primary"
 occupied_color = "secondary"
 empty_color = "surface_container"
 urgent_color = "error"
+cast_color = "tertiary"
 change_color_on_hover = true  # false = keep configured workspace colors while hovering
 focused_output_only = false  # true = only the focused monitor highlights its active workspace
 ```

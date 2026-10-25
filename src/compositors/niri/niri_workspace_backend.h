@@ -45,6 +45,8 @@ public:
   [[nodiscard]] std::optional<std::string> focusedWindowId() const override;
   bool focusWindowById(const std::string& windowId, bool warpPointer = false) override;
   bool closeWindowById(const std::string& windowId) override;
+  [[nodiscard]] std::vector<CompositorWindowAction> windowActions(const std::string& windowId) const override;
+  bool runWindowAction(const std::string& windowId, std::string_view actionId) override;
   void cleanup() override;
 
 private:
@@ -54,6 +56,17 @@ private:
     std::string title;
     std::int32_t x = 0;
     std::int32_t y = 0;
+    bool urgent = false;
+    bool floating = false;
+    bool sticky = false;
+    bool mirror = false;
+    bool mirrorLinked = false;
+    bool blockOut = false;
+    // niri reports no workspace for sticky windows. They show on the active workspace of the
+    // output they were last seen on: the focused output while focused, else the output of the
+    // workspace they were stuck from.
+    std::string stickyOutput;
+    std::optional<std::uint64_t> stickyAnchorWorkspaceId;
 
     bool operator==(const WindowState&) const = default;
   };
@@ -63,8 +76,21 @@ private:
     std::uint8_t idx = 0;
     std::string name;
     std::string output;
+    bool active = false;
+    bool focused = false;
 
     bool operator==(const WorkspaceState&) const = default;
+  };
+
+  struct CastState {
+    std::uint64_t sessionId = 0;
+    std::string output;
+    std::optional<std::uint64_t> workspaceId;
+    std::optional<std::uint64_t> windowId;
+    bool dynamic = false;
+    bool active = false;
+
+    bool operator==(const CastState&) const = default;
   };
 
   [[nodiscard]] bool handleWorkspacesChanged(const nlohmann::json& payload);
@@ -74,7 +100,14 @@ private:
   [[nodiscard]] bool handleWindowLayoutsChanged(const nlohmann::json& payload);
   [[nodiscard]] bool handleWindowClosed(const nlohmann::json& payload);
   [[nodiscard]] bool handleWindowFocusChanged(const nlohmann::json& payload);
+  [[nodiscard]] bool handleWorkspaceActivated(const nlohmann::json& payload);
+  [[nodiscard]] bool handleWindowUrgencyChanged(const nlohmann::json& payload);
+  [[nodiscard]] bool handleCastsChanged(const nlohmann::json& payload);
+  [[nodiscard]] bool handleCastChanged(const nlohmann::json& payload);
+  [[nodiscard]] bool handleCastStopped(const nlohmann::json& payload);
+  [[nodiscard]] bool handleBlockOutChanged(const nlohmann::json& payload);
   [[nodiscard]] bool updateFocusedWindowIdFromWindowsJson(const nlohmann::json& windows);
+  [[nodiscard]] static std::optional<std::pair<std::uint64_t, CastState>> parseCast(const nlohmann::json& json);
   [[nodiscard]] static std::optional<WorkspaceState> parseWorkspace(const nlohmann::json& json);
   [[nodiscard]] static std::optional<std::pair<std::uint64_t, WindowState>> parseWindow(const nlohmann::json& json);
   [[nodiscard]] static bool applyWindowFields(const nlohmann::json& json, WindowState& state);
@@ -84,6 +117,16 @@ private:
       const std::unordered_map<std::uint64_t, WindowState>& rhs
   ) noexcept;
   [[nodiscard]] static bool sameWindowLayout(const WindowState& lhs, const WindowState& rhs) noexcept;
+  [[nodiscard]] const WorkspaceState* focusedWorkspace() const;
+  [[nodiscard]] const WorkspaceState* activeWorkspaceForOutput(const std::string& outputName) const;
+  [[nodiscard]] std::string windowOutput(const WindowState& window) const;
+  // The workspace a window is listed under: its own, or for sticky windows the active one of its output.
+  [[nodiscard]] std::optional<std::uint64_t> displayWorkspaceId(const WindowState& window) const;
+  [[nodiscard]] WindowAttributes windowAttributes(std::uint64_t windowId, const WindowState& window) const;
+  [[nodiscard]] bool isWorkspaceCast(std::uint64_t workspaceId) const;
+  [[nodiscard]] bool isOutputCast(const std::string& outputName) const;
+  [[nodiscard]] bool isWindowCast(std::uint64_t windowId) const;
+  [[nodiscard]] bool resolveStickyOutputs();
   [[nodiscard]] static std::optional<std::uint64_t> parseUnsigned(const std::string& value);
   [[nodiscard]] static std::optional<std::size_t> parseLeadingNumber(const std::string& value);
   [[nodiscard]] static std::string workspaceKey(const WorkspaceState& workspace);
@@ -97,6 +140,10 @@ private:
   std::unordered_map<std::uint64_t, std::size_t> m_occupancy;
   std::unordered_map<std::uint64_t, WorkspaceState> m_workspaces;
   std::optional<std::uint64_t> m_focusedWindowId;
+  std::unordered_map<std::uint64_t, CastState> m_casts;
+  bool m_blockOutEnabled = false;
+  // Set once window JSON carries the fork-only fields (is_sticky, is_mirror, ...).
+  bool m_extendedWindowState = false;
   bool m_overviewKnown = false;
   bool m_overviewOpen = false;
   ChangeCallback m_changeCallback;

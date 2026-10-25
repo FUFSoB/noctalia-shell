@@ -111,6 +111,115 @@ int main() {
       "window 41 should use its named workspace and updated position"
   );
 
+  // Window attributes, sticky placement and casts.
+  {
+    NiriWorkspaceBackend states(runtime);
+    int stateChanges = 0;
+    states.setChangeCallback([&]() { ++stateChanges; });
+    states.handleEvent(
+        "WorkspacesChanged",
+        {{"workspaces",
+          {
+              {{"id", 10}, {"idx", 1}, {"output", "DP-1"}, {"is_active", true}, {"is_focused", true}},
+              {{"id", 11}, {"idx", 2}, {"output", "DP-1"}, {"is_active", false}, {"is_focused", false}},
+              {{"id", 20}, {"idx", 1}, {"output", "HDMI-A-1"}, {"is_active", true}, {"is_focused", false}},
+          }}}
+    );
+    states.handleEvent(
+        "WindowsChanged",
+        {{"windows",
+          {
+              {{"id", 1}, {"workspace_id", 10}, {"app_id", "a"}, {"is_urgent", true}, {"is_floating", true}},
+              {{"id", 2},
+               {"workspace_id", nullptr},
+               {"app_id", "b"},
+               {"is_sticky", true},
+               {"is_mirror", false},
+               {"is_block_out", true}},
+              {{"id", 3}, {"workspace_id", 11}, {"app_id", "c"}, {"is_mirror", true}},
+          }}}
+    );
+
+    auto find = [&](const std::vector<WorkspaceWindow>& list, std::string_view id) -> const WorkspaceWindow* {
+      const auto it = std::ranges::find(list, id, &WorkspaceWindow::windowId);
+      return it != list.end() ? &*it : nullptr;
+    };
+
+    auto dp1 = states.workspaceWindows("DP-1");
+    const auto* first = find(dp1, "1");
+    ok &= check(
+        first != nullptr && first->attributes.urgent && first->attributes.floating && !first->attributes.sticky,
+        "window 1 should be urgent and floating"
+    );
+    const auto* sticky = find(dp1, "2");
+    ok &= check(
+        sticky != nullptr && sticky->workspaceKey == "1" && sticky->attributes.sticky,
+        "sticky window without a workspace should show on the focused output's active workspace"
+    );
+    ok &= check(find(states.workspaceWindows("HDMI-A-1"), "2") == nullptr, "sticky window stays on its output");
+    const auto* mirror = find(dp1, "3");
+    ok &= check(mirror != nullptr && mirror->attributes.mirror, "window 3 should be a mirror");
+
+    stateChanges = 0;
+    states.handleEvent("WorkspaceActivated", {{"id", 11}, {"focused", true}});
+    ok &= check(stateChanges == 1, "workspace activation should notify");
+    dp1 = states.workspaceWindows("DP-1");
+    sticky = find(dp1, "2");
+    ok &= check(sticky != nullptr && sticky->workspaceKey == "2", "sticky window should follow the active workspace");
+
+    states.handleEvent("WindowUrgencyChanged", {{"id", 1}, {"urgent", false}});
+    first = find(states.workspaceWindows("DP-1"), "1");
+    ok &= check(first != nullptr && !first->attributes.urgent, "urgency event should clear window urgency");
+
+    states.handleEvent("BlockOutEnabledChanged", {{"is_enabled", true}});
+    states.handleEvent(
+        "CastsChanged",
+        {{"casts",
+          {
+              {{"stream_id", 5},
+               {"session_id", 7},
+               {"target", {{"Workspace", {{"id", 11}}}}},
+               {"is_dynamic_target", false},
+               {"is_active", true}},
+          }}}
+    );
+    sticky = find(states.workspaceWindows("DP-1"), "2");
+    ok &= check(
+        sticky != nullptr && sticky->attributes.hiddenFromCast && !sticky->attributes.cast,
+        "blocked-out window inside a cast workspace should be hidden from the cast"
+    );
+
+    stateChanges = 0;
+    states.handleEvent(
+        "CastStartedOrChanged",
+        {{"cast",
+          {{"stream_id", 6},
+           {"session_id", 8},
+           {"target", {{"Window", {{"id", 3}}}}},
+           {"is_dynamic_target", true},
+           {"is_active", true}}}}
+    );
+    ok &= check(stateChanges == 1, "a new cast should notify");
+    mirror = find(states.workspaceWindows("DP-1"), "3");
+    ok &= check(mirror != nullptr && mirror->attributes.cast, "window 3 should be cast");
+
+    states.handleEvent("CastStopped", {{"stream_id", 6}});
+    mirror = find(states.workspaceWindows("DP-1"), "3");
+    ok &= check(mirror != nullptr && !mirror->attributes.cast, "stopped cast should clear the window cast flag");
+
+    // Unsticking hands the window back to a real workspace.
+    states.handleEvent(
+        "WindowOpenedOrChanged",
+        {{"window", {{"id", 2}, {"workspace_id", 20}, {"app_id", "b"}, {"is_sticky", false}, {"is_block_out", true}}}}
+    );
+    ok &= check(find(states.workspaceWindows("DP-1"), "2") == nullptr, "unstuck window leaves DP-1");
+    sticky = find(states.workspaceWindows("HDMI-A-1"), "2");
+    ok &= check(
+        sticky != nullptr && !sticky->attributes.sticky && !sticky->attributes.hiddenFromCast,
+        "unstuck window should live on its workspace outside the cast"
+    );
+  }
+
   std::string request;
   int serverError = 0;
   std::jthread server([&]() {

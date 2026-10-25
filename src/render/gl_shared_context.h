@@ -41,6 +41,10 @@ public:
 
   [[nodiscard]] EGLContext createContext(EGLContext shareContext, std::string_view label);
 
+  // Largest surface edge, in buffer pixels, the GPU can render to (min of the GL texture,
+  // renderbuffer and viewport limits). 0 when unknown.
+  [[nodiscard]] int maxRenderDimension() const noexcept { return m_maxRenderDimension; }
+
   // Bind the root context surfacelessly. No-op (returns true) when shared context is disabled.
   // Returns false if eglMakeCurrent failed (e.g. context lost on resume); callers skip GPU work.
   bool makeCurrentSurfaceless() const;
@@ -56,6 +60,7 @@ private:
   void buildContextAttributes();
   [[nodiscard]] EGLContext createContextWithCurrentAttributes(EGLContext shareContext) const;
   void usePlainContextAttributes() noexcept;
+  void queryMaxRenderDimension();
 
   EGLDisplay m_display = EGL_NO_DISPLAY;
   EGLConfig m_config = nullptr;
@@ -65,6 +70,7 @@ private:
   bool m_resetNotificationEnabled = false;
   bool m_videoMemoryPurgeNotificationEnabled = false;
   bool m_sharedContextEnabled = false;
+  int m_maxRenderDimension = 0;
   std::function<void(RenderGraphicsResetStatus)> m_graphicsResetCallback;
   mutable bool m_graphicsResetReported = false;
 };
