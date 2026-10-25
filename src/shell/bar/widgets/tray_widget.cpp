@@ -147,6 +147,14 @@ namespace {
       if (a == 0) {
         continue;
       }
+      // Like GTK, keep intentionally colored parts (e.g. class="error" badges)
+      // and only recolor the neutral foreground.
+      if (useSourceAlphaMask) {
+        const auto [minIt, maxIt] = std::minmax_element(loaded->rgba.begin() + i, loaded->rgba.begin() + i + 3);
+        if (*maxIt - *minIt > 64) {
+          continue;
+        }
+      }
       const float lum =
           (loaded->rgba[i] * 0.299F + loaded->rgba[i + 1] * 0.587F + loaded->rgba[i + 2] * 0.114F) / 255.0F;
       const float mask = useSourceAlphaMask ? 1.0F : (invertLumaMask ? (1.0F - lum) : lum);
