@@ -249,6 +249,13 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                       .key = "show_workspace_label",
                       .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
                   }),
+                  field<&Options::workspaceLabelScale>({
+                      .key = "workspace_label_scale",
+                      .minValue = 0.5,
+                      .maxValue = 2.0,
+                      .step = 0.05,
+                      .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
+                  }),
                   field<&Options::workspaceLabelPlacement>(
                       {
                           .key = "workspace_label_placement",

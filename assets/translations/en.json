@@ -5143,6 +5143,10 @@
         "workspace-label-placement": {
           "description": "Corner, centered on the edge, or inside the pill",
           "label": "Workspace Label Placement"
+        },
+        "workspace-label-scale": {
+          "description": "Size multiplier for workspace labels and their discs",
+          "label": "Workspace Label Size"
         }
       },
       "types": {

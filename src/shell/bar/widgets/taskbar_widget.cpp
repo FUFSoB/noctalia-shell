@@ -1459,8 +1459,9 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
 
     const bool inlineBadge = m_showWorkspaceLabel && m_workspaceLabelPlacement == WorkspaceLabelPlacement::Inside;
     const bool externalBadge = m_showWorkspaceLabel && !inlineBadge;
-    const float badgeBase = std::round(std::max(11.0F, Style::baseGlyphSize * 0.72F) * m_contentScale);
-    const float externalBadgeFontSize = std::round(Style::fontSizeCaption * 0.72F * fontScale());
+    const float labelScale = m_configOptions.workspaceLabelScale;
+    const float badgeBase = std::round(std::max(11.0F, Style::baseGlyphSize * 0.72F) * m_contentScale * labelScale);
+    const float externalBadgeFontSize = std::round(Style::fontSizeCaption * 0.72F * fontScale() * labelScale);
 
     const float externalBadgeCrossLimit = m_vertical && crossExtent > 0.0F
         ? std::max(0.0F, (m_workspaceGroupCapsule ? groupedCrossInner : crossExtent) - 2.0F * groupOutlineInset)
@@ -1507,7 +1508,8 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
       badgePalette.disabled = badgePalette.normal;
       badgePalette.borderWidth = 0.0F;
 
-      const float badgeFontSize = fitBadgeFontSize(renderer, ws.label, disc.width, disc.height, fontScale(), labelFont);
+      const float badgeFontSize =
+          fitBadgeFontSize(renderer, ws.label, disc.width, disc.height, fontScale() * labelScale, labelFont);
 
       auto badge = ui::button({
           .text = ws.label,
@@ -1526,6 +1528,9 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
               b.label()->setFontWeight(fontWeight);
               b.label()->setFontFamily(fontFamily);
               b.label()->setTextAlign(TextAlign::Center);
+              // Badge text is a few pixels tall: centering on the cap band drifts by a visible
+              // half pixel after grid snapping, so center the glyph ink in the disc instead.
+              b.label()->setBaselineMode(LabelBaselineMode::InkCentered);
             }
           },
       });
@@ -1822,7 +1827,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
       group->setPadding(groupPadTop, groupPadRight, groupPadBottom, groupPadLeft);
 
       if (inlineBadge && m_showWorkspaceLabel) {
-        const float inlineBadgeFontSize = std::round(Style::fontSizeCaption * 0.85F * fontScale());
+        const float inlineBadgeFontSize = std::round(Style::fontSizeCaption * 0.85F * fontScale() * labelScale);
         const float inlineBadgeHeight = std::round(std::max(10.0F, iconSize - (Style::spaceXs * m_contentScale)));
         WorkspaceDiscSize disc = measureWorkspaceDiscSize(
             renderer, ws.label, inlineBadgeFontSize, inlineBadgeHeight, m_contentScale, labelFont

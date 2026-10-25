@@ -62,6 +62,8 @@ struct TaskbarWidgetOptions {
   int itemSpacing = 4;
   // Space between window tiles inside one workspace group.
   int groupItemSpacing = 4;
+  // Size multiplier for workspace labels and their discs.
+  float workspaceLabelScale = 1.0F;
   std::vector<std::string> pinned;
   float pinnedOpacity = 0.5F;
   ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);
