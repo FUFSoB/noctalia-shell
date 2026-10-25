@@ -186,6 +186,14 @@ namespace image_effects {
       if (a == 0) {
         continue;
       }
+      // Like GTK, keep intentionally colored parts (e.g. class="error" badges)
+      // and only recolor the neutral foreground.
+      if (useSourceAlphaMask) {
+        const auto [minIt, maxIt] = std::minmax_element(rgba.begin() + i, rgba.begin() + i + 3);
+        if (*maxIt - *minIt > 64) {
+          continue;
+        }
+      }
       const float lum = pixelLuminance(
           static_cast<float>(rgba[i]) / 255.0F, static_cast<float>(rgba[i + 1]) / 255.0F,
           static_cast<float>(rgba[i + 2]) / 255.0F
