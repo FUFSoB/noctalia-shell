@@ -4,7 +4,9 @@
 #include "wayland/wayland_extension.h"
 #include "wayland/wayland_seat.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -65,6 +67,9 @@ struct WaylandOutput {
   // Canonical published render scale as a /120 numerator (120 == 1.0). Resolved
   // from metadata scale, then mode/logical ratio, then integer wl_output.scale.
   std::int32_t configuredScaleNumerator = wayland::kScaleNumeratorBase;
+  // Larger than the GPU can render a surface for (e.g. huge virtual outputs). The shell
+  // creates no surfaces on such outputs.
+  bool exceedsRenderLimit = false;
 
   float configuredScale() const noexcept {
     return static_cast<float>(configuredScaleNumerator) / static_cast<float>(wayland::kScaleNumeratorBase);
@@ -94,7 +99,17 @@ struct WaylandOutput {
     return scaled > 0 ? scaled : 1;
   }
 
-  bool hasUsableGeometry() const noexcept { return effectiveLogicalWidth() > 0 && effectiveLogicalHeight() > 0; }
+  bool hasUsableGeometry() const noexcept {
+    return !exceedsRenderLimit && effectiveLogicalWidth() > 0 && effectiveLogicalHeight() > 0;
+  }
+
+  // Largest buffer edge a full-output surface needs, in pixels.
+  std::int32_t bufferExtent() const noexcept {
+    const auto logical = static_cast<std::int32_t>(
+        std::ceil(static_cast<float>(std::max(effectiveLogicalWidth(), effectiveLogicalHeight())) * configuredScale())
+    );
+    return std::max({width, height, logical});
+  }
 };
 
 // Output metadata an extension publishes per connector name (e.g. from wlr-output-management heads).
@@ -132,6 +147,8 @@ public:
 
   // Delegate setters
   void setOutputChangeCallback(ChangeCallback callback);
+  // Outputs whose buffer extent exceeds `pixels` become unusable (0 disables the limit).
+  void setMaxRenderableOutputDimension(int pixels);
   void setOutputLifecycleCallbacks(std::function<void(wl_output*)> added, std::function<void(wl_output*)> removed);
   void setPointerEventCallback(WaylandSeat::PointerEventCallback callback);
   void setKeyboardEventCallback(WaylandSeat::KeyboardEventCallback callback);
@@ -222,6 +239,7 @@ public:
   void notifySurfaceOutputLeave(wl_surface* surface, wl_output* output);
   void unregisterSurface(wl_surface* surface);
   void notifyOutputReady(wl_output* output);
+  bool updateRenderLimitState(WaylandOutput& out);
 
   // Registry listener entrypoints
   static void
@@ -265,6 +283,7 @@ private:
   TextInputService* m_textInputService = nullptr;
   std::vector<WaylandOutput> m_outputs;
   ChangeCallback m_outputChangeCallback;
+  int m_maxRenderableOutputDimension = 0;
   std::function<void(wl_output*)> m_outputAddedCallback;
   std::function<void(wl_output*)> m_outputRemovedCallback;
   std::unordered_map<wl_surface*, wl_output*> m_surfaceOutputMap;

@@ -75,6 +75,14 @@ struct TaskbarWidgetOptions {
   ColorSpec occupiedColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec emptyColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec urgentColor = colorSpecFromRole(ColorRole::Error);
+  // Compositor window state (niri): urgent fill, cast ring, mirror/sticky/floating dots.
+  bool highlightUrgentWindows = true;
+  bool highlightCastWindows = true;
+  ColorSpec castColor = colorSpecFromRole(ColorRole::Tertiary);
+  bool showWindowStates = true;
+  ColorSpec mirrorColor = colorSpecFromRole(ColorRole::Primary);
+  ColorSpec stickyColor = colorSpecFromRole(ColorRole::Secondary);
+  ColorSpec floatingColor = colorSpecFromRole(ColorRole::OutlineVariant);
   bool showRunning = true;
   bool showWindowTitle = false;
   int windowTitleMaxWidth = 100;
@@ -135,6 +143,7 @@ private:
     zwlr_foreign_toplevel_handle_v1* firstHandle = nullptr;
     std::optional<WindowMinimizeState> minimizeState;
     std::size_t minimizedCount = 0;
+    WindowAttributes attributes;
   };
 
   struct WorkspaceModel {
@@ -170,6 +179,8 @@ private:
     // Present when m_showActiveIndicator; visibility tracks task.active.
     Box* activeIndicator = nullptr;
     Box* minimizeIndicator = nullptr;
+    // Applied on top of the active/inactive opacity (windows hidden from an active cast).
+    float opacityFactor = 1.0F;
   };
 
   // Gesture state for drag-to-reorder of pinned tiles in the flat strip. Holds no obligation to
@@ -235,7 +246,9 @@ private:
   static std::string_view workspaceBindingWindowId(const TaskModel& task);
   static ToplevelInfo toplevelInfoForTask(const TaskModel& task);
   static bool allWindowsMinimized(const TaskModel& task);
-  static std::string taskTooltip(const TaskModel& task, std::size_t minimizedCount, std::size_t windowCount);
+  static std::string taskTooltip(
+      const TaskModel& task, std::size_t minimizedCount, std::size_t windowCount, const WindowAttributes& attributes
+  );
   void activateTaskModel(const TaskModel& task, bool primaryClick = false);
   void closeTaskModel(const TaskModel& task);
   void applyPinnedMerge(std::vector<TaskModel>& tasks);
@@ -284,6 +297,7 @@ private:
   ColorSpec m_occupiedColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec m_emptyColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec m_urgentColor = colorSpecFromRole(ColorRole::Error);
+  ColorSpec m_castColor = colorSpecFromRole(ColorRole::Tertiary);
   bool m_showWindowTitle = false;
   float m_windowTitleMaxWidth = 100.0;
   float m_taskbarMaxWidth = 8192.0;
