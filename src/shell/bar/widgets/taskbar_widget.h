@@ -69,6 +69,8 @@ struct TaskbarWidgetOptions {
   bool preferSymbolicIcons = false;
   bool colorizeIcons = false;
   int itemSpacing = 4;
+  // Space between window tiles inside one workspace group.
+  int groupItemSpacing = 4;
   std::vector<std::string> pinned;
   float pinnedOpacity = 0.5F;
   ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);

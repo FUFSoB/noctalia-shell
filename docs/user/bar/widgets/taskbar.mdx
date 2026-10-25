@@ -42,6 +42,7 @@ On supported compositors, minimised windows use hollow dots in `workspace_group_
 | `icon_scale`                            | float           | `1.0`               | Scale taskbar application icons relative to their default size. Values from `0.1` to `2.0` are accepted; larger icons remain constrained by the bar thickness.                                                                                                                                                        |
 | `prefer_symbolic_icons`                 | bool            | `false`             | Prefer `-symbolic` application icons from the active icon theme and fall back to regular icons. Symbolic icons use the taskbar widget icon/foreground color; regular fallbacks honor this widget's `colorize_icons` setting.                                                                                          |
 | `item_spacing`                          | int             | `4`                 | Space between taskbar items in logical pixels when workspace grouping is off. Values from `0` to `48` are accepted.                                                                                                                                                                                                   |
+| `group_item_spacing`                    | int             | `4`                 | Space between window tiles inside a workspace group, in logical pixels (`0` to `48`). Requires `group_by_workspace`.                                                                                                                                                                                                  |
 | `show_window_title`                     | bool            | `false`             | Show each window title next to its icon on horizontal bars. Available only when workspace grouping is off.                                                                                                                                                                                                            |
 | `window_title_max_width`                | int             | `100`               | Maximum width of each window title in pixels when titles are enabled.                                                                                                                                                                                                                                                 |
 | `taskbar_max_width`                     | int             | `8192`              | Total taskbar width budget in pixels; titles shrink to fit and disappear when space is too narrow.                                                                                                                                                                                                                    |
@@ -81,6 +82,7 @@ show_running = true
 icon_scale = 1.0
 prefer_symbolic_icons = true
 item_spacing = 4  # Flat taskbar only; ignored when workspace grouping is enabled
+group_item_spacing = 4  # Between tiles inside a workspace group
 group_by_workspace = true
 show_all_outputs = true
 only_active_workspace = true

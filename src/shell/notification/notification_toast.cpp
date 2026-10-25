@@ -127,13 +127,11 @@ namespace {
   }
 
   ColorSpec toastBorderColor(const ConfigService* config, Urgency urgency) {
-    if (urgency == Urgency::Critical) {
-      return colorSpecFromRole(ColorRole::Error);
-    }
     if (config == nullptr) {
-      return colorSpecFromRole(ColorRole::OutlineVariant);
+      return colorSpecFromRole(urgency == Urgency::Critical ? ColorRole::Error : ColorRole::OutlineVariant);
     }
-    return config->config().notification.borderColor;
+    const auto& notification = config->config().notification;
+    return urgency == Urgency::Critical ? notification.criticalBorderColor : notification.borderColor;
   }
 
   float toastBorderWidth(const ConfigService* config, Urgency urgency, float scale) {
