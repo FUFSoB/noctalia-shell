@@ -2792,6 +2792,59 @@ void TaskbarWidget::updateModels() {
       }
     }
 
+    // niri mirrors share their source window's surface, so no foreign toplevel ever stands for
+    // them: list them from the compositor's window model, addressed by their own window id.
+    {
+      std::unordered_set<std::string> representedWindowIds;
+      representedWindowIds.reserve(nextTasks.size());
+      for (const auto& task : nextTasks) {
+        if (!task.workspaceWindowId.empty()) {
+          representedWindowIds.insert(task.workspaceWindowId);
+        }
+      }
+
+      for (std::size_t i = 0; i < workspaceAssignments.size(); ++i) {
+        const auto& assignment = workspaceAssignments[i];
+        if (!assignment.attributes.mirror
+            || assignment.windowId.empty()
+            || !representedWindowIds.insert(assignment.windowId).second) {
+          continue;
+        }
+
+        TaskModel task{};
+        task.handleKey = syntheticAssignmentHandleKey(assignment, i);
+        task.order = static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()) + i;
+        task.appId = assignment.appId;
+        task.idLower = toLower(task.appId);
+        task.startupWmClassLower = task.idLower;
+        task.nameLower = task.idLower;
+        task.appIdLower = task.idLower;
+        task.title = assignment.title;
+        task.iconPath = resolveIconPath(task.appId, {});
+        if (const auto entry = app_identity::findDesktopEntry(task.appId, desktopEntries()); entry.has_value()) {
+          task.displayName = entry->name;
+        }
+        task.workspaceKey = assignment.workspaceKey;
+        task.workspaceWindowId = assignment.windowId;
+        task.attributes = assignment.attributes;
+        if (m_platform.hasExactWindowIdentity()) {
+          task.exactWindowId = assignment.windowId;
+          task.active = focusedCompositorWindowId.has_value() && assignment.windowId == *focusedCompositorWindowId;
+        }
+        task.workspaceOrder = i;
+        nextTasks.push_back(std::move(task));
+      }
+
+      // A focused mirror also activates its source's toplevel, which shares the surface.
+      const bool mirrorFocused =
+          std::ranges::any_of(nextTasks, [](const TaskModel& task) { return task.active && task.attributes.mirror; });
+      if (mirrorFocused) {
+        for (auto& task : nextTasks) {
+          task.active = task.active && task.attributes.mirror;
+        }
+      }
+    }
+
     // Compositor-agnostic: workspace windows with no app id become their own tasks.
     {
       std::unordered_set<std::string> representedWindowIds;
