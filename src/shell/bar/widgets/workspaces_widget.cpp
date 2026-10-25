@@ -1495,14 +1495,14 @@ bool WorkspacesWidget::workspaceUsesFocusedStyle(const Workspace& workspace, wl_
 }
 
 ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_output* output) const {
+  if (workspace.cast) {
+    return m_castColor;
+  }
   if (workspace.active) {
     return workspaceUsesFocusedStyle(workspace, output) ? m_focusedColor : m_occupiedColor;
   }
   if (workspace.urgent) {
     return m_urgentColor;
-  }
-  if (workspace.cast) {
-    return m_castColor;
   }
   if (workspace.occupied) {
     return m_occupiedColor;
@@ -1513,11 +1513,11 @@ ColorSpec WorkspacesWidget::workspaceFillColor(const Workspace& workspace, wl_ou
 }
 
 ColorSpec WorkspacesWidget::workspaceTextColor(const Workspace& workspace, wl_output* output) const {
+  if (workspace.cast) {
+    return isMinimal() ? m_castColor : readableColorForFill(m_castColor);
+  }
   if (workspace.urgent) {
     return isMinimal() ? m_urgentColor : readableColorForFill(m_urgentColor);
-  }
-  if (workspace.cast && !workspace.active) {
-    return isMinimal() ? m_castColor : readableColorForFill(m_castColor);
   }
   if (!isMinimal()) {
     return readableColorForFill(workspaceFillColor(workspace, output));

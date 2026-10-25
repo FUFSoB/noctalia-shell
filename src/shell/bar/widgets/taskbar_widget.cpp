@@ -3853,16 +3853,16 @@ bool TaskbarWidget::workspaceUsesFocusedStyle(const WorkspaceModel& model) const
 ColorSpec TaskbarWidget::workspaceFillColor(const WorkspaceModel& model) const {
   const Workspace& workspace = model.workspace;
 
+  if (workspace.cast) {
+    return m_castColor;
+  }
+
   if (workspace.active) {
     return workspaceUsesFocusedStyle(model) ? m_focusedColor : m_occupiedColor;
   }
 
   if (workspace.urgent) {
     return m_urgentColor;
-  }
-
-  if (workspace.cast) {
-    return m_castColor;
   }
 
   if (workspace.occupied) {
@@ -3877,12 +3877,12 @@ ColorSpec TaskbarWidget::workspaceFillColor(const WorkspaceModel& model) const {
 ColorSpec TaskbarWidget::workspaceTextColor(const WorkspaceModel& model) const {
   const Workspace& workspace = model.workspace;
 
-  if (workspace.urgent) {
-    return m_minimal ? m_urgentColor : readableColorForFill(m_urgentColor);
+  if (workspace.cast) {
+    return m_minimal ? m_castColor : readableColorForFill(m_castColor);
   }
 
-  if (workspace.cast && !workspace.active) {
-    return m_minimal ? m_castColor : readableColorForFill(m_castColor);
+  if (workspace.urgent) {
+    return m_minimal ? m_urgentColor : readableColorForFill(m_urgentColor);
   }
 
   if (!m_minimal) {
