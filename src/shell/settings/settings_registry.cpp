@@ -3519,6 +3519,12 @@ namespace settings {
         colorSpecPicker(cfg.notification.borderColor), "outline border color theme accent"
     ));
     entries.push_back(makeEntry(
+        SettingsSection::Notifications, "toasts", tr("settings.schema.notifications.critical-border-color.label"),
+        tr("settings.schema.notifications.critical-border-color.description"),
+        {"notification", "critical_border_color"}, colorSpecPicker(cfg.notification.criticalBorderColor),
+        "outline border color critical urgent error"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Notifications, "toasts", tr("settings.schema.notifications.border-width.label"),
         tr("settings.schema.notifications.border-width.description"), {"notification", "border_width"},
         sliderFor(cfg.notification.borderWidth, noctalia::config::schema::kNotificationToastBorderWidthRange, false),

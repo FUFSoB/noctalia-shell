@@ -2706,6 +2706,10 @@
         "width": {
           "description": "Toast width in pixels before scaling",
           "label": "Width"
+        },
+        "critical-border-color": {
+          "description": "Outline color of critical toasts; their countdown bar is the error color, so pick another color to keep it visible",
+          "label": "Critical Border Color"
         }
       },
       "panels": {
@@ -4670,6 +4674,10 @@
         "group-by-workspace": {
           "description": "Group taskbar icons into workspace capsules when compositor data is available",
           "label": "Group by Workspace"
+        },
+        "group-item-spacing": {
+          "description": "Space between window tiles inside a workspace group",
+          "label": "Group Item Spacing"
         },
         "group-single-icon-per-app": {
           "description": "When grouping by workspace with icons, collapse multiple windows from the same app into one icon with a count badge",

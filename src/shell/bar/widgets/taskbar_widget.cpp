@@ -1812,7 +1812,7 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
           {
               .align = FlexAlign::Center,
               .justify = FlexJustify::Center,
-              .gap = groupGap,
+              .gap = static_cast<float>(m_configOptions.groupItemSpacing) * m_contentScale,
               .fill = m_workspaceGroupCapsule ? surfaceFill : clearColorSpec(),
               .radius = m_workspaceGroupCapsule ? resolvedBarCapsuleRadius(crossSize, crossSize) : 0.0F,
               .border = m_workspaceGroupCapsule ? borderColor : clearColorSpec(),

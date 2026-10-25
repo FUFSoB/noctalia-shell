@@ -60,6 +60,8 @@ struct TaskbarWidgetOptions {
   float inactiveOpacity = 1.0F;
   float iconScale = 1.0F;
   int itemSpacing = 4;
+  // Space between window tiles inside one workspace group.
+  int groupItemSpacing = 4;
   std::vector<std::string> pinned;
   float pinnedOpacity = 0.5F;
   ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);

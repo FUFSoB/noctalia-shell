@@ -111,6 +111,13 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                       .step = 1.0,
                       .presentation = presentation("taskbar.windows", matches("group_by_workspace", {"false"})),
                   }),
+                  field<&Options::groupItemSpacing>({
+                      .key = "group_item_spacing",
+                      .minValue = 0.0,
+                      .maxValue = 48.0,
+                      .step = 1.0,
+                      .presentation = presentation("taskbar.grouping", groupedOnly(), true),
+                  }),
                   field<&Options::pinned>({
                       .key = "pinned",
                       .presentation = presentation(

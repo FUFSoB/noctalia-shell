@@ -302,6 +302,7 @@ namespace noctalia::config::schema {
         field(&NotificationConfig::backgroundOpacity, "background_opacity", kUnitRange),
         field(&NotificationConfig::border, "border"),
         colorField(&NotificationConfig::borderColor, "border_color"),
+        colorField(&NotificationConfig::criticalBorderColor, "critical_border_color"),
         field(&NotificationConfig::borderWidth, "border_width", kNotificationToastBorderWidthRange),
         field(&NotificationConfig::followFocusedOutput, "follow_focused_output"),
         field(&NotificationConfig::offsetX, "offset_x"),

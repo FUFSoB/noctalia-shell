@@ -874,6 +874,8 @@ struct NotificationConfig {
   float backgroundOpacity = 0.97F; // toast card background alpha (0.0–1.0)
   bool border = true;              // outline around toast cards
   ColorSpec borderColor = colorSpecFromRole(ColorRole::OutlineVariant);
+  // Critical toasts; their countdown bar is the error color too, so it blends into an error outline.
+  ColorSpec criticalBorderColor = colorSpecFromRole(ColorRole::Error);
   float borderWidth = Style::borderWidth;
   bool followFocusedOutput = false;
   int offsetX = 20; // absolute horizontal margin from the screen edge
