@@ -1408,15 +1408,31 @@ void TaskbarWidget::buildTaskButtons(Renderer& renderer) {
         indicator->setPosition(tilePadding, std::round(tileSize));
         area->addChild(std::move(indicator));
       } else {
+        // Centered on the icon, not the tile: the icon gets the tile's odd spare pixel on its
+        // right. Sizes share the icon's parity so the mark sits exactly under its middle.
+        const float iconLeft = centeredOffset(tileSize, iconSize);
+        const float iconBottom = iconLeft + iconSize;
+        const auto matchIconParity = [iconSize](float size) {
+          return static_cast<int>(std::round(iconSize - size)) % 2 == 0 ? size : size + 1.0F;
+        };
+        // On thin bars the tile is barely taller than the icon, so a dot under the icon would sit
+        // on top of it. Draw a short line hugging the icon's bottom edge instead.
+        const float dot = matchIconParity(d);
+        const bool dotFits = tileSize - bottomInset - iconBottom >= dot;
+        const float width = dotFits ? dot : matchIconParity(std::round(d * 2.0F));
+        const float height = dotFits ? dot : std::max(2.0F, std::round(d * 0.4F));
+        const float y = dotFits ? std::round(tileSize - dot - bottomInset) : std::round(iconBottom);
         auto indicator = ui::box({
             .fill = m_activeIndicatorColor,
-            .radius = resolvedBarCapsuleRadius(d, d),
-            .width = d,
-            .height = d,
+            .radius = resolvedBarCapsuleRadius(width, height),
+            .width = width,
+            .height = height,
+            .participatesInLayout = false,
         });
         indicatorPtr = indicator.get();
+        indicator->setHitTestVisible(false);
         indicator->setVisible(task.active);
-        indicator->setPosition(std::round((tileSize - d) * 0.5F), std::round(tileSize - d - bottomInset));
+        indicator->setPosition(iconLeft + (iconSize - width) * 0.5F, y);
         area->addChild(std::move(indicator));
       }
     }
