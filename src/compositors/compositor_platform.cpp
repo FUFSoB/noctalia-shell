@@ -1589,10 +1589,25 @@ std::vector<WorkspaceWindowAssignment> CompositorPlatform::workspaceWindowAssign
             .x = window.x,
             .y = window.y,
             .minimizeState = window.minimizeState,
+            .attributes = window.attributes,
         }
     );
   }
   return result;
+}
+
+std::vector<CompositorWindowAction> CompositorPlatform::windowActions(const std::string& windowId) const {
+  if (m_workspaceMetadataBackend == nullptr || windowId.empty()) {
+    return {};
+  }
+  return m_workspaceMetadataBackend->windowActions(windowId);
+}
+
+bool CompositorPlatform::runWindowAction(const std::string& windowId, std::string_view actionId) {
+  if (m_workspaceMetadataBackend == nullptr || windowId.empty()) {
+    return false;
+  }
+  return m_workspaceMetadataBackend->runWindowAction(windowId, actionId);
 }
 
 std::vector<std::string> CompositorPlatform::openOverlayWorkspaceKeys(wl_output* outputFilter) const {
@@ -1994,7 +2009,8 @@ bool CompositorPlatform::sameWorkspaceModelSnapshot(
         && a.coordinates == b.coordinates
         && a.active == b.active
         && a.urgent == b.urgent
-        && a.occupied == b.occupied;
+        && a.occupied == b.occupied
+        && a.cast == b.cast;
   };
   auto sameAssignment = [](const WorkspaceWindowAssignment& a, const WorkspaceWindowAssignment& b) {
     return a.windowId == b.windowId
@@ -2002,7 +2018,8 @@ bool CompositorPlatform::sameWorkspaceModelSnapshot(
         && a.appId == b.appId
         && a.title == b.title
         && a.x == b.x
-        && a.y == b.y;
+        && a.y == b.y
+        && a.attributes == b.attributes;
   };
 
   if (lhs.size() != rhs.size()) {

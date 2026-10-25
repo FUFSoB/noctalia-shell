@@ -177,6 +177,9 @@ public:
   std::unordered_map<std::string, std::vector<std::string>> appIdsByWorkspace(wl_output* outputFilter = nullptr) const;
   std::vector<std::string> workspaceDisplayKeys(wl_output* outputFilter = nullptr) const;
   std::vector<WorkspaceWindowAssignment> workspaceWindowAssignments(wl_output* outputFilter = nullptr) const;
+  // Compositor-specific actions for a window id (context menus); empty when unsupported.
+  std::vector<CompositorWindowAction> windowActions(const std::string& windowId) const;
+  bool runWindowAction(const std::string& windowId, std::string_view actionId);
   // Workspace keys of the overlay workspaces currently open on `outputFilter`
   // (nullptr = every output). Empty unless the active workspace backend tracks them.
   std::vector<std::string> openOverlayWorkspaceKeys(wl_output* outputFilter = nullptr) const;

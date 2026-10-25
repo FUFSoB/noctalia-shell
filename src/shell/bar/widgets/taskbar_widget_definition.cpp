@@ -73,6 +73,34 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                           .step = 0.01,
                           .presentation = presentation("taskbar.windows"),
                       }),
+                      field<&Options::highlightUrgentWindows>({
+                          .key = "highlight_urgent_windows",
+                          .presentation = presentation("taskbar.windows"),
+                      }),
+                      field<&Options::highlightCastWindows>({
+                          .key = "highlight_cast_windows",
+                          .presentation = presentation("taskbar.windows"),
+                      }),
+                      field<&Options::castColor>({
+                          .key = "cast_color",
+                          .presentation = presentation("taskbar.windows"),
+                      }),
+                      field<&Options::showWindowStates>({
+                          .key = "show_window_states",
+                          .presentation = presentation("taskbar.windows"),
+                      }),
+                      field<&Options::mirrorColor>({
+                          .key = "mirror_color",
+                          .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
+                      }),
+                      field<&Options::stickyColor>({
+                          .key = "sticky_color",
+                          .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
+                      }),
+                      field<&Options::floatingColor>({
+                          .key = "floating_color",
+                          .presentation = presentation("taskbar.windows", matches("show_window_states", {"true"})),
+                      }),
                       field<&Options::iconScale>({
                           .key = "icon_scale",
                           .minValue = 0.1,
@@ -311,7 +339,7 @@ const noctalia::bar::WidgetDefinition<TaskbarWidgetOptions>& taskbarWidgetDefini
                       }),
                       field<&Options::urgentColor>({
                           .key = "urgent_color",
-                          .presentation = presentation("taskbar.workspace-labels", groupedOnly(), true),
+                          .presentation = presentation("taskbar.windows"),
                       }),
                   },
               .commonOverrides = {

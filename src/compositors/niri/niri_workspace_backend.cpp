@@ -195,9 +195,11 @@ void NiriWorkspaceBackend::apply(std::vector<Workspace>& workspaces, const std::
         workspaces[i].index = matches[i]->idx;
       }
       workspaces[i].occupied = m_occupancy.contains(matches[i]->id) && m_occupancy.at(matches[i]->id) > 0;
+      workspaces[i].cast = isWorkspaceCast(matches[i]->id);
     } else {
       workspaces[i].index = 0;
       workspaces[i].occupied = false;
+      workspaces[i].cast = false;
     }
   }
 }
@@ -247,10 +249,11 @@ NiriWorkspaceBackend::appIdsByWorkspace(const std::string& outputName) const {
   std::unordered_map<std::string, std::vector<std::string>> result;
   std::unordered_map<std::string, std::unordered_set<std::string>> seen;
   for (const auto& [windowId, window] : m_windows) {
-    if (!window.workspaceId.has_value() || window.appId.empty()) {
+    const auto workspaceId = displayWorkspaceId(window);
+    if (!workspaceId.has_value() || window.appId.empty()) {
       continue;
     }
-    const auto workspaceIt = workspacesById.find(*window.workspaceId);
+    const auto workspaceIt = workspacesById.find(*workspaceId);
     if (workspaceIt == workspacesById.end()) {
       continue;
     }
@@ -276,11 +279,11 @@ std::vector<WorkspaceWindow> NiriWorkspaceBackend::workspaceWindows(const std::s
   std::vector<WorkspaceWindow> result;
   result.reserve(m_windows.size());
   for (const auto& [windowId, window] : m_windows) {
-    (void)windowId;
-    if (!window.workspaceId.has_value()) {
+    const auto workspaceId = displayWorkspaceId(window);
+    if (!workspaceId.has_value()) {
       continue;
     }
-    const auto workspaceIt = workspacesById.find(*window.workspaceId);
+    const auto workspaceIt = workspacesById.find(*workspaceId);
     if (workspaceIt == workspacesById.end()) {
       continue;
     }
@@ -293,6 +296,7 @@ std::vector<WorkspaceWindow> NiriWorkspaceBackend::workspaceWindows(const std::s
             .x = window.x,
             .y = window.y,
             .outputName = {},
+            .attributes = windowAttributes(windowId, window),
         }
     );
   }
@@ -330,6 +334,103 @@ bool NiriWorkspaceBackend::closeWindowById(const std::string& windowId) {
   );
 }
 
+std::vector<CompositorWindowAction> NiriWorkspaceBackend::windowActions(const std::string& windowId) const {
+  const auto id = parseUnsigned(windowId);
+  if (!id.has_value() || !m_runtime.available()) {
+    return {};
+  }
+  const auto it = m_windows.find(*id);
+  if (it == m_windows.end()) {
+    return {};
+  }
+  const WindowState& window = it->second;
+
+  std::vector<CompositorWindowAction> actions;
+  actions.push_back({
+      .id = "toggle-floating",
+      .labelKey =
+          window.floating ? "bar.widgets.taskbar.window-actions.tile" : "bar.widgets.taskbar.window-actions.float",
+  });
+  if (m_extendedWindowState) {
+    actions.push_back({
+        .id = "toggle-sticky",
+        .labelKey =
+            window.sticky ? "bar.widgets.taskbar.window-actions.unstick" : "bar.widgets.taskbar.window-actions.stick",
+    });
+    actions.push_back({.id = "create-mirror", .labelKey = "bar.widgets.taskbar.window-actions.create-mirror"});
+    if (window.mirror) {
+      actions.push_back({
+          .id = "toggle-mirror-link",
+          .labelKey = window.mirrorLinked ? "bar.widgets.taskbar.window-actions.unlink-mirror"
+                                          : "bar.widgets.taskbar.window-actions.link-mirror",
+      });
+      actions.push_back(
+          {.id = "reset-mirror-view", .labelKey = "bar.widgets.taskbar.window-actions.reset-mirror-view"}
+      );
+    }
+    actions.push_back({
+        .id = "toggle-block-out",
+        .labelKey = window.blockOut ? "bar.widgets.taskbar.window-actions.show-in-casts"
+                                    : "bar.widgets.taskbar.window-actions.hide-from-casts",
+    });
+  }
+
+  const bool hasDynamicCast = std::ranges::any_of(m_casts, [&](const auto& entry) {
+    return entry.second.dynamic && entry.second.windowId != id;
+  });
+  if (hasDynamicCast) {
+    actions.push_back({.id = "cast-window", .labelKey = "bar.widgets.taskbar.window-actions.cast-window"});
+  }
+  if (isWindowCast(*id)) {
+    actions.push_back({.id = "stop-cast", .labelKey = "bar.widgets.taskbar.window-actions.stop-cast"});
+  }
+  return actions;
+}
+
+bool NiriWorkspaceBackend::runWindowAction(const std::string& windowId, std::string_view actionId) {
+  const auto id = parseUnsigned(windowId);
+  if (!id.has_value()) {
+    return false;
+  }
+  const nlohmann::json target{{"id", *id}};
+  if (actionId == "toggle-floating") {
+    return m_runtime.requestAction(nlohmann::json{{"ToggleWindowFloating", target}});
+  }
+  if (actionId == "toggle-sticky") {
+    return m_runtime.requestAction(nlohmann::json{{"ToggleWindowSticky", target}});
+  }
+  if (actionId == "create-mirror") {
+    return m_runtime.requestAction(nlohmann::json{{"CreateWindowMirror", target}});
+  }
+  if (actionId == "toggle-mirror-link") {
+    return m_runtime.requestAction(nlohmann::json{{"ToggleWindowMirrorLink", target}});
+  }
+  if (actionId == "reset-mirror-view") {
+    return m_runtime.requestAction(nlohmann::json{{"ResetWindowMirrorView", target}});
+  }
+  if (actionId == "toggle-block-out") {
+    return m_runtime.requestAction(nlohmann::json{{"ToggleBlockOutWindow", target}});
+  }
+  if (actionId == "cast-window") {
+    return m_runtime.requestAction(nlohmann::json{{"SetDynamicCastWindow", target}});
+  }
+  if (actionId == "stop-cast") {
+    std::unordered_set<std::uint64_t> sessions;
+    for (const auto& [streamId, cast] : m_casts) {
+      (void)streamId;
+      if (cast.windowId == id) {
+        sessions.insert(cast.sessionId);
+      }
+    }
+    bool ok = !sessions.empty();
+    for (const auto sessionId : sessions) {
+      ok = m_runtime.requestAction(nlohmann::json{{"StopCast", nlohmann::json{{"session_id", sessionId}}}}) && ok;
+    }
+    return ok;
+  }
+  return false;
+}
+
 void NiriWorkspaceBackend::cleanup() { m_runtime.cleanup(); }
 
 void NiriWorkspaceBackend::handleStreamReset() {
@@ -337,6 +438,8 @@ void NiriWorkspaceBackend::handleStreamReset() {
   m_windows.clear();
   m_workspaces.clear();
   m_focusedWindowId.reset();
+  m_casts.clear();
+  m_blockOutEnabled = false;
   m_overviewKnown = false;
   m_overviewOpen = false;
   if (overviewWasOpen) {
@@ -373,6 +476,23 @@ void NiriWorkspaceBackend::handleEvent(std::string_view key, const nlohmann::jso
     changed = handleWindowClosed(value);
   } else if (key == "WindowFocusChanged") {
     changed = handleWindowFocusChanged(value);
+  } else if (key == "WorkspaceActivated") {
+    changed = handleWorkspaceActivated(value);
+  } else if (key == "WindowUrgencyChanged") {
+    changed = handleWindowUrgencyChanged(value);
+  } else if (key == "CastsChanged") {
+    changed = handleCastsChanged(value);
+  } else if (key == "CastStartedOrChanged" || key == "CastRecordingStarted" || key == "CastRecordingStopped") {
+    changed = handleCastChanged(value);
+  } else if (key == "CastStopped") {
+    changed = handleCastStopped(value);
+  } else if (key == "BlockOutStateChanged" || key == "BlockOutEnabledChanged") {
+    changed = handleBlockOutChanged(value);
+  }
+
+  // Sticky windows follow the focused output, so any workspace or focus change may move them.
+  if (resolveStickyOutputs()) {
+    changed = true;
   }
 
   if (changed) {
@@ -409,8 +529,16 @@ bool NiriWorkspaceBackend::handleWindowsChanged(const nlohmann::json& payload) {
 
   std::unordered_map<std::uint64_t, WindowState> next;
   for (const auto& item : *windows) {
-    if (const auto parsed = parseWindow(item); parsed.has_value()) {
-      next.emplace(parsed->first, parsed->second);
+    if (auto parsed = parseWindow(item); parsed.has_value()) {
+      m_extendedWindowState = m_extendedWindowState || item.contains("is_mirror");
+      auto& state = parsed->second;
+      // A full snapshot carries no history: keep where already-sticky windows were placed.
+      if (const auto previous = m_windows.find(parsed->first); previous != m_windows.end() && state.sticky) {
+        state.stickyOutput = previous->second.stickyOutput;
+        state.stickyAnchorWorkspaceId =
+            previous->second.sticky ? previous->second.stickyAnchorWorkspaceId : previous->second.workspaceId;
+      }
+      next.emplace(parsed->first, std::move(state));
     }
   }
 
@@ -420,11 +548,16 @@ bool NiriWorkspaceBackend::handleWindowsChanged(const nlohmann::json& payload) {
   }
 
   const bool membershipChanged = !sameWindowMembership(next, m_windows);
+  const bool attributesChanged = std::ranges::any_of(next, [&](const auto& entry) {
+    const auto previous = m_windows.find(entry.first);
+    return previous != m_windows.end()
+        && windowAttributes(entry.first, previous->second) != windowAttributes(entry.first, entry.second);
+  });
   m_windows = std::move(next);
   if (membershipChanged) {
     recomputeOccupancy();
   }
-  return membershipChanged || focusUpdated;
+  return membershipChanged || attributesChanged || focusUpdated;
 }
 
 bool NiriWorkspaceBackend::handleOverviewChanged(const nlohmann::json& payload) {
@@ -482,6 +615,7 @@ bool NiriWorkspaceBackend::handleWindowOpenedOrChanged(const nlohmann::json& pay
     }
   }
 
+  m_extendedWindowState = m_extendedWindowState || window->contains("is_mirror");
   const auto existing = m_windows.find(*id);
   WindowState state = existing != m_windows.end() ? existing->second : WindowState{};
   if (!applyWindowFields(*window, state)) {
@@ -491,15 +625,18 @@ bool NiriWorkspaceBackend::handleWindowOpenedOrChanged(const nlohmann::json& pay
     return focusUpdated;
   }
 
-  const bool membershipChanged = existing == m_windows.end() ? (state.workspaceId.has_value() || !state.appId.empty())
-                                                             : !sameWindowMembership(existing->second, state);
+  const bool membershipChanged = existing == m_windows.end()
+      ? (state.workspaceId.has_value() || state.sticky || !state.appId.empty())
+      : !sameWindowMembership(existing->second, state);
   const bool layoutChanged = existing != m_windows.end() && !sameWindowLayout(existing->second, state);
+  const bool attributesChanged =
+      existing != m_windows.end() && windowAttributes(*id, existing->second) != windowAttributes(*id, state);
   m_windows[*id] = state;
   if (membershipChanged) {
     recomputeOccupancy();
   }
 
-  return membershipChanged || layoutChanged || focusUpdated;
+  return membershipChanged || layoutChanged || attributesChanged || focusUpdated;
 }
 
 bool NiriWorkspaceBackend::handleWindowLayoutsChanged(const nlohmann::json& payload) {
@@ -589,6 +726,129 @@ bool NiriWorkspaceBackend::handleWindowFocusChanged(const nlohmann::json& payloa
   return true;
 }
 
+bool NiriWorkspaceBackend::handleWorkspaceActivated(const nlohmann::json& payload) {
+  const auto id = jsonOptionalUnsigned(payload, "id");
+  if (!id.has_value()) {
+    return false;
+  }
+  const auto activated = m_workspaces.find(*id);
+  if (activated == m_workspaces.end()) {
+    return false;
+  }
+  const bool focused = jsonOptionalBool(payload, "focused").value_or(false);
+  const std::string output = activated->second.output;
+
+  bool changed = false;
+  for (auto& [workspaceId, workspace] : m_workspaces) {
+    if (workspace.output == output) {
+      const bool active = workspaceId == *id;
+      changed = changed || workspace.active != active;
+      workspace.active = active;
+    }
+    if (focused) {
+      const bool isFocused = workspaceId == *id;
+      changed = changed || workspace.focused != isFocused;
+      workspace.focused = isFocused;
+    }
+  }
+  return changed;
+}
+
+bool NiriWorkspaceBackend::handleWindowUrgencyChanged(const nlohmann::json& payload) {
+  const auto id = jsonOptionalUnsigned(payload, "id");
+  const auto urgent = jsonOptionalBool(payload, "urgent");
+  if (!id.has_value() || !urgent.has_value()) {
+    return false;
+  }
+  const auto it = m_windows.find(*id);
+  if (it == m_windows.end() || it->second.urgent == *urgent) {
+    return false;
+  }
+  it->second.urgent = *urgent;
+  return true;
+}
+
+bool NiriWorkspaceBackend::handleCastsChanged(const nlohmann::json& payload) {
+  const auto* casts = arrayPayload(payload, "casts");
+  if (casts == nullptr) {
+    return false;
+  }
+  std::unordered_map<std::uint64_t, CastState> next;
+  for (const auto& item : *casts) {
+    if (auto parsed = parseCast(item); parsed.has_value()) {
+      next.emplace(parsed->first, std::move(parsed->second));
+    }
+  }
+  if (next == m_casts) {
+    return false;
+  }
+  m_casts = std::move(next);
+  return true;
+}
+
+bool NiriWorkspaceBackend::handleCastChanged(const nlohmann::json& payload) {
+  const auto it = payload.find("cast");
+  if (!payload.is_object() || it == payload.end()) {
+    return false;
+  }
+  auto parsed = parseCast(*it);
+  if (!parsed.has_value()) {
+    return false;
+  }
+  auto& slot = m_casts[parsed->first];
+  if (slot == parsed->second) {
+    return false;
+  }
+  slot = std::move(parsed->second);
+  return true;
+}
+
+bool NiriWorkspaceBackend::handleCastStopped(const nlohmann::json& payload) {
+  const auto streamId = jsonOptionalUnsigned(payload, "stream_id");
+  return streamId.has_value() && m_casts.erase(*streamId) > 0;
+}
+
+bool NiriWorkspaceBackend::handleBlockOutChanged(const nlohmann::json& payload) {
+  std::optional<bool> enabled = jsonOptionalBool(payload, "is_enabled");
+  if (!enabled.has_value() && payload.is_object()) {
+    if (const auto it = payload.find("block_out_state"); it != payload.end()) {
+      enabled = jsonOptionalBool(*it, "is_enabled");
+    }
+  }
+  if (!enabled.has_value() || *enabled == m_blockOutEnabled) {
+    return false;
+  }
+  m_blockOutEnabled = *enabled;
+  return true;
+}
+
+std::optional<std::pair<std::uint64_t, NiriWorkspaceBackend::CastState>>
+NiriWorkspaceBackend::parseCast(const nlohmann::json& json) {
+  if (!json.is_object()) {
+    return std::nullopt;
+  }
+  const auto streamId = jsonOptionalUnsigned(json, "stream_id");
+  if (!streamId.has_value()) {
+    return std::nullopt;
+  }
+
+  CastState cast;
+  cast.sessionId = jsonOptionalUnsigned(json, "session_id").value_or(0);
+  cast.dynamic = jsonOptionalBool(json, "is_dynamic_target").value_or(false);
+  cast.active = jsonOptionalBool(json, "is_active").value_or(false);
+  // CastTarget is an externally tagged enum: {"Output": {"name": ...}}, {"Window": {"id": ...}}, ...
+  if (const auto target = json.find("target"); target != json.end() && target->is_object()) {
+    if (const auto output = target->find("Output"); output != target->end()) {
+      cast.output = jsonOptionalString(*output, "name");
+    } else if (const auto workspace = target->find("Workspace"); workspace != target->end()) {
+      cast.workspaceId = jsonOptionalUnsigned(*workspace, "id");
+    } else if (const auto window = target->find("Window"); window != target->end()) {
+      cast.windowId = jsonOptionalUnsigned(*window, "id");
+    }
+  }
+  return std::pair<std::uint64_t, CastState>{*streamId, std::move(cast)};
+}
+
 bool NiriWorkspaceBackend::updateFocusedWindowIdFromWindowsJson(const nlohmann::json& windows) {
   std::optional<std::uint64_t> focused;
   for (const auto& item : windows) {
@@ -625,6 +885,8 @@ std::optional<NiriWorkspaceBackend::WorkspaceState> NiriWorkspaceBackend::parseW
       .idx = static_cast<std::uint8_t>(*idx),
       .name = jsonOptionalString(json, "name"),
       .output = jsonOptionalString(json, "output"),
+      .active = jsonOptionalBool(json, "is_active").value_or(false),
+      .focused = jsonOptionalBool(json, "is_focused").value_or(false),
   };
 }
 
@@ -650,13 +912,37 @@ bool NiriWorkspaceBackend::applyWindowFields(const nlohmann::json& json, WindowS
   }
 
   bool changed = false;
+  auto readFlag = [&](const char* key, bool& field) {
+    if (const auto value = jsonOptionalBool(json, key); value.has_value()) {
+      field = *value;
+      changed = true;
+    }
+  };
+  readFlag("is_urgent", state.urgent);
+  readFlag("is_floating", state.floating);
+  readFlag("is_sticky", state.sticky);
+  readFlag("is_mirror", state.mirror);
+  readFlag("is_mirror_linked", state.mirrorLinked);
+  readFlag("is_block_out", state.blockOut);
+  if (!state.sticky) {
+    state.stickyOutput.clear();
+    state.stickyAnchorWorkspaceId.reset();
+  }
+
   if (json.contains("workspace_id")) {
     if (const auto workspaceId = jsonOptionalUnsigned(json, "workspace_id"); workspaceId.has_value()) {
       state.workspaceId = workspaceId;
       changed = true;
+    } else if (state.sticky) {
+      // Sticky windows belong to no workspace; remember where they came from.
+      if (state.workspaceId.has_value()) {
+        state.stickyAnchorWorkspaceId = state.workspaceId;
+      }
+      state.workspaceId.reset();
+      changed = true;
     }
-    // Null workspace_id is common while a window is interactively moved; keep the
-    // last known workspace so shell consumers do not treat the window as unassigned.
+    // Otherwise a null workspace_id is common while a window is interactively moved; keep
+    // the last known workspace so shell consumers do not treat the window as unassigned.
   }
 
   if (json.contains("app_id") || json.contains("class")) {
@@ -689,7 +975,10 @@ bool NiriWorkspaceBackend::applyWindowFields(const nlohmann::json& json, WindowS
 }
 
 bool NiriWorkspaceBackend::sameWindowMembership(const WindowState& lhs, const WindowState& rhs) noexcept {
-  return lhs.workspaceId == rhs.workspaceId && lhs.appId == rhs.appId;
+  return lhs.workspaceId == rhs.workspaceId
+      && lhs.appId == rhs.appId
+      && lhs.sticky == rhs.sticky
+      && lhs.stickyOutput == rhs.stickyOutput;
 }
 
 bool NiriWorkspaceBackend::sameWindowMembership(
@@ -747,6 +1036,112 @@ std::string NiriWorkspaceBackend::workspaceKey(const WorkspaceState& workspace) 
     return std::to_string(workspace.id);
   }
   return {};
+}
+
+const NiriWorkspaceBackend::WorkspaceState* NiriWorkspaceBackend::focusedWorkspace() const {
+  for (const auto& [id, workspace] : m_workspaces) {
+    (void)id;
+    if (workspace.focused) {
+      return &workspace;
+    }
+  }
+  return nullptr;
+}
+
+const NiriWorkspaceBackend::WorkspaceState*
+NiriWorkspaceBackend::activeWorkspaceForOutput(const std::string& outputName) const {
+  if (outputName.empty()) {
+    return nullptr;
+  }
+  for (const auto& [id, workspace] : m_workspaces) {
+    (void)id;
+    if (workspace.active && workspace.output == outputName) {
+      return &workspace;
+    }
+  }
+  return nullptr;
+}
+
+std::string NiriWorkspaceBackend::windowOutput(const WindowState& window) const {
+  if (window.sticky) {
+    return window.stickyOutput;
+  }
+  if (window.workspaceId.has_value()) {
+    if (const auto it = m_workspaces.find(*window.workspaceId); it != m_workspaces.end()) {
+      return it->second.output;
+    }
+  }
+  return {};
+}
+
+std::optional<std::uint64_t> NiriWorkspaceBackend::displayWorkspaceId(const WindowState& window) const {
+  if (!window.sticky) {
+    return window.workspaceId;
+  }
+  const auto* active = activeWorkspaceForOutput(window.stickyOutput);
+  return active != nullptr ? std::optional<std::uint64_t>(active->id) : std::nullopt;
+}
+
+WindowAttributes NiriWorkspaceBackend::windowAttributes(std::uint64_t windowId, const WindowState& window) const {
+  WindowAttributes attributes{
+      .urgent = window.urgent,
+      .floating = window.floating,
+      .sticky = window.sticky,
+      .mirror = window.mirror,
+      .mirrorLinked = window.mirrorLinked,
+      .blockOut = window.blockOut,
+      .cast = isWindowCast(windowId),
+  };
+  if (window.blockOut && m_blockOutEnabled) {
+    const auto workspaceId = displayWorkspaceId(window);
+    attributes.hiddenFromCast =
+        (workspaceId.has_value() && isWorkspaceCast(*workspaceId)) || isOutputCast(windowOutput(window));
+  }
+  return attributes;
+}
+
+bool NiriWorkspaceBackend::isWorkspaceCast(std::uint64_t workspaceId) const {
+  return std::ranges::any_of(m_casts, [workspaceId](const auto& entry) {
+    return entry.second.active && entry.second.workspaceId == workspaceId;
+  });
+}
+
+bool NiriWorkspaceBackend::isOutputCast(const std::string& outputName) const {
+  return !outputName.empty() && std::ranges::any_of(m_casts, [&outputName](const auto& entry) {
+    return entry.second.active && entry.second.output == outputName;
+  });
+}
+
+bool NiriWorkspaceBackend::isWindowCast(std::uint64_t windowId) const {
+  return std::ranges::any_of(m_casts, [windowId](const auto& entry) {
+    return entry.second.active && entry.second.windowId == windowId;
+  });
+}
+
+bool NiriWorkspaceBackend::resolveStickyOutputs() {
+  const auto* focused = focusedWorkspace();
+  bool changed = false;
+  for (auto& [windowId, window] : m_windows) {
+    if (!window.sticky) {
+      continue;
+    }
+    std::string output = window.stickyOutput;
+    if (m_focusedWindowId == windowId && focused != nullptr) {
+      output = focused->output;
+    } else if (output.empty() && window.stickyAnchorWorkspaceId.has_value()) {
+      if (const auto it = m_workspaces.find(*window.stickyAnchorWorkspaceId); it != m_workspaces.end()) {
+        output = it->second.output;
+      }
+    }
+    if (output.empty() && focused != nullptr) {
+      output = focused->output;
+    }
+    if (output != window.stickyOutput) {
+      window.stickyOutput = std::move(output);
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 void NiriWorkspaceBackend::recomputeOccupancy() {
