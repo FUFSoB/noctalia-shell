@@ -5297,6 +5297,10 @@
           "description": "Corner, centered on the edge, or inside the pill",
           "label": "Workspace Label Placement"
         },
+        "workspace-label-scale": {
+          "description": "Size multiplier for workspace labels and their discs",
+          "label": "Workspace Label Size"
+        },
         "workspace-monitors": {
           "all": "All Monitors",
           "description": "Choose which monitors' workspaces appear in this widget, in order. Leave empty to show only the workspaces from the monitor hosting the bar",
