@@ -66,6 +66,7 @@ namespace {
   constexpr float kIconTextGap = Style::spaceSm;
   constexpr float kActionGap = Style::spaceXs;
   constexpr float kActionRowGap = Style::spaceSm;
+  constexpr float kActionButtonHeight = 26.0F;
   std::string fallbackActionLabel() { return i18n::tr("notifications.actions.fallback"); }
 
   bool hasInlineReplyAction(const std::vector<std::string>& actions) {
@@ -329,7 +330,10 @@ namespace {
     return ui::button({
         .text = std::string(label),
         .fontSize = Style::fontSizeCaption * scale,
+        .controlHeight = kActionButtonHeight * scale,
         .variant = ButtonVariant::Default,
+        .paddingV = Style::spaceXs * scale,
+        .paddingH = Style::spaceMd * scale,
     });
   }
 

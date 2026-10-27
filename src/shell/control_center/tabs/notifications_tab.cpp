@@ -50,6 +50,7 @@ namespace {
     return std::min(iconSize * 0.5F, Style::scaledRadius(baseRadius, localScale));
   }
   constexpr float kNotificationActionButtonSize = Style::controlHeightSm;
+  constexpr float kHistoryActionButtonHeight = 26.0F;
 
   std::string historyActionLabel(std::string_view actionKey, std::string_view actionLabel) {
     if (!StringUtils::isBlank(actionLabel)) {
@@ -62,6 +63,17 @@ namespace {
       return i18n::tr("notifications.inline-reply.button");
     }
     return i18n::tr("notifications.actions.fallback");
+  }
+
+  std::unique_ptr<Button> makeHistoryActionButton(std::string label, float scale) {
+    return ui::button({
+        .text = std::move(label),
+        .fontSize = Style::fontSizeCaption * scale,
+        .controlHeight = kHistoryActionButtonHeight * scale,
+        .variant = ButtonVariant::Default,
+        .paddingV = Style::spaceXs * scale,
+        .paddingH = Style::spaceMd * scale,
+    });
   }
 
   float measureHistoryActionsRowHeight(
@@ -82,13 +94,7 @@ namespace {
       if (actionKey.empty()) {
         continue;
       }
-      buttons.push_back(
-          ui::button({
-              .text = historyActionLabel(actionKey, actions[i + 1]),
-              .fontSize = Style::fontSizeCaption * scale,
-              .variant = ButtonVariant::Default,
-          })
-      );
+      buttons.push_back(makeHistoryActionButton(historyActionLabel(actionKey, actions[i + 1]), scale));
     }
 
     auto rows = wrapButtonsIntoRows(renderer, buttons, cardTextWidth, Style::spaceXs * scale);
@@ -452,11 +458,8 @@ namespace {
           if (actionKey.empty()) {
             continue;
           }
-          auto button = ui::button({
-              .text = historyActionLabel(actionKey, entry.notification.actions[i + 1]),
-              .fontSize = Style::fontSizeCaption * m_scale,
-              .variant = ButtonVariant::Default,
-          });
+          auto button =
+              makeHistoryActionButton(historyActionLabel(actionKey, entry.notification.actions[i + 1]), m_scale);
           button->setOnClick([onAction, id = entry.notification.id, key = std::string(actionKey)] {
             onAction(id, key);
           });
